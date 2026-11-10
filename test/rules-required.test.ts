@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { CREDIT_V1_0, CREDIT_V1_1, INVOICE_V1_0, INVOICE_V1_1 } from '../src/docs.js';
+import {
+  CREDIT_V1_0,
+  CREDIT_V1_1,
+  INVOICE_V1_0,
+  INVOICE_V1_1,
+  SELF_BILLED_CREDIT_V1_1,
+  SELF_BILLED_DEBIT_V1_1,
+  SELF_BILLED_REFUND_V1_1,
+} from '../src/docs.js';
 import { check } from '../src/rules-required.js';
 
 function L(value: string | number, attrs: Record<string, string> = {}) {
@@ -925,6 +933,49 @@ describe('required.original-reference', () => {
         }),
       ),
     ).toEqual([]);
+  });
+
+  it.each([
+    ['12', SELF_BILLED_CREDIT_V1_1],
+    ['13', SELF_BILLED_DEBIT_V1_1],
+    ['14', SELF_BILLED_REFUND_V1_1],
+  ] as const)('warns when type %s has no InvoiceDocumentReference', (type, docUrl) => {
+    expect(check(asNote(type))).toEqual([
+      finding(
+        'required.original-reference',
+        'Invoice/BillingReference/InvoiceDocumentReference',
+        'Original e-Invoice reference is expected for credit, debit, and refund notes.',
+        { severity: 'warning', docUrl },
+      ),
+    ]);
+  });
+
+  it('does not apply the rule to Self-billed Invoice type 11', () => {
+    expect(check(asNote('11'))).toEqual([]);
+    expect(
+      check(
+        asNote('11', (inv) => {
+          inv.BillingReference = originalRef('F9D425P6DS7D8IU', undefined);
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('errors when UUID is missing from a self-billed debit note type 13', () => {
+    expect(
+      check(
+        asNote('13', (inv) => {
+          inv.BillingReference = originalRef(undefined, 'INV12345');
+        }),
+      ),
+    ).toEqual([
+      finding(
+        'required.original-reference',
+        'Invoice/BillingReference/InvoiceDocumentReference/UUID',
+        'UUID is missing. Original e-Invoice reference UUID and ID are both required.',
+        { docUrl: SELF_BILLED_DEBIT_V1_1 },
+      ),
+    ]);
   });
 
   it('cites CREDIT_V1_0 for a type 02 version 1.0 finding', () => {

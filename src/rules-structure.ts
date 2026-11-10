@@ -6,7 +6,10 @@ const INVOICE_URN = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2';
 
 const SVDP_LIMIT = 'versions 1.2/1.3 (SVDP) are not supported yet';
 
-const SUPPORTED_TYPES = new Set(['01', '02', '03', '04']);
+const SUPPORTED_TYPES = new Set(['01', '02', '03', '04', '11', '12', '13', '14']);
+
+const SUPPORTED_TYPE_LIST =
+  'Invoice (01), Credit Note (02), Debit Note (03), Refund Note (04), Self-billed Invoice (11), Self-billed Credit Note (12), Self-billed Debit Note (13), and Self-billed Refund Note (14)';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -82,7 +85,7 @@ export function check(doc: unknown): Finding[] {
       rule: 'structure.type-code',
       severity: 'error',
       path: 'Invoice/InvoiceTypeCode',
-      message: `InvoiceTypeCode "${typeCode}" is not supported; only Invoice (01), Credit Note (02), Debit Note (03), and Refund Note (04) are supported (self-billed types 11-14 not yet).`,
+      message: `InvoiceTypeCode "${typeCode}" is not supported; only ${SUPPORTED_TYPE_LIST} are supported.`,
       docUrl,
     });
   }

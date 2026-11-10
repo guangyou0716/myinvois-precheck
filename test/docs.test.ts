@@ -8,6 +8,14 @@ import {
   INVOICE_V1_1,
   REFUND_V1_0,
   REFUND_V1_1,
+  SELF_BILLED_CREDIT_V1_0,
+  SELF_BILLED_CREDIT_V1_1,
+  SELF_BILLED_DEBIT_V1_0,
+  SELF_BILLED_DEBIT_V1_1,
+  SELF_BILLED_INVOICE_V1_0,
+  SELF_BILLED_INVOICE_V1_1,
+  SELF_BILLED_REFUND_V1_0,
+  SELF_BILLED_REFUND_V1_1,
   documentUrl,
 } from '../src/docs.js';
 import { check } from '../src/rules-structure.js';
@@ -35,11 +43,19 @@ describe('documentUrl', () => {
     ['03', '1.1', DEBIT_V1_1],
     ['04', '1.0', REFUND_V1_0],
     ['04', '1.1', REFUND_V1_1],
+    ['11', '1.0', SELF_BILLED_INVOICE_V1_0],
+    ['11', '1.1', SELF_BILLED_INVOICE_V1_1],
+    ['12', '1.0', SELF_BILLED_CREDIT_V1_0],
+    ['12', '1.1', SELF_BILLED_CREDIT_V1_1],
+    ['13', '1.0', SELF_BILLED_DEBIT_V1_0],
+    ['13', '1.1', SELF_BILLED_DEBIT_V1_1],
+    ['14', '1.0', SELF_BILLED_REFUND_V1_0],
+    ['14', '1.1', SELF_BILLED_REFUND_V1_1],
   ] as const)('type %s version %s returns the matching data-structure page', (type, version, page) => {
     expect(documentUrl(type, version)).toBe(page);
   });
 
-  it.each(['99', '11', undefined] as const)(
+  it.each(['99', '05', undefined] as const)(
     'unknown type %j falls back to the invoice page',
     (type) => {
       expect(documentUrl(type, '1.0')).toBe(INVOICE_V1_0);
@@ -52,6 +68,10 @@ describe('documentUrl', () => {
     ['02', CREDIT_V1_1],
     ['03', DEBIT_V1_1],
     ['04', REFUND_V1_1],
+    ['11', SELF_BILLED_INVOICE_V1_1],
+    ['12', SELF_BILLED_CREDIT_V1_1],
+    ['13', SELF_BILLED_DEBIT_V1_1],
+    ['14', SELF_BILLED_REFUND_V1_1],
   ] as const)('unknown version for type %s cites the v1.1 page', (type, page) => {
     expect(documentUrl(type, '1.2')).toBe(page);
     expect(documentUrl(type, undefined)).toBe(page);
@@ -71,5 +91,21 @@ describe('documentUrl', () => {
       docUrl: REFUND_V1_1,
     });
     expect(refund[0]?.docUrl).toContain('refund-v1-1');
+  });
+
+  it('cites self-billed-debit-v1-1 and self-billed-refund-v1-1 on type 13 and 14 findings', () => {
+    const debit = check(typedInvoice('13', '1.1'));
+    expect(debit[0]).toMatchObject({
+      rule: 'structure.signature',
+      docUrl: SELF_BILLED_DEBIT_V1_1,
+    });
+    expect(debit[0]?.docUrl).toContain('self-billed-debit-v1-1');
+
+    const refund = check(typedInvoice('14', '1.1'));
+    expect(refund[0]).toMatchObject({
+      rule: 'structure.signature',
+      docUrl: SELF_BILLED_REFUND_V1_1,
+    });
+    expect(refund[0]?.docUrl).toContain('self-billed-refund-v1-1');
   });
 });
