@@ -31,13 +31,8 @@ function indexed(parent: string, name: string, index: number, total: number): st
 }
 
 function currencyIdOf(node: Record<string, unknown>): string | undefined {
-  const value = node.currencyID;
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed === '' ? undefined : trimmed;
-  }
-  if (typeof value === 'number') return String(value);
-  return undefined;
+  const value = attr(node, 'currencyID');
+  return value === '' ? undefined : value;
 }
 
 function notInTable(label: string, value: string, table: CodeTable): string {
@@ -182,10 +177,9 @@ function checkTaxCategories(findings: Finding[], parent: unknown, parentPath: st
 
 function checkLine(findings: Finding[], line: unknown, basePath: string): void {
   const unitCode = attr(line, 'unitCode', 'InvoicedQuantity');
-  const trimmedUnit = typeof unitCode === 'string' ? unitCode.trim() : unitCode;
   checkTable(
     findings,
-    trimmedUnit === '' ? undefined : trimmedUnit,
+    unitCode === '' ? undefined : unitCode,
     'UnitTypes',
     'codes.unit',
     `${basePath}/InvoicedQuantity/unitCode`,

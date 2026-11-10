@@ -59,6 +59,11 @@ describe('fixtures', () => {
       const errors = result.findings.filter((finding) => finding.severity === 'error');
       const findingsMsg = JSON.stringify(result.findings, null, 2);
 
+      expect(
+        result.findings.some((finding) => finding.rule === 'structure.attribute-whitespace'),
+        findingsMsg,
+      ).toBe(false);
+
       if (VALID_FILES.has(file)) {
         const warnings = result.findings.filter((finding) => finding.severity === 'warning');
         expect(result.ok, findingsMsg).toBe(true);
@@ -88,5 +93,9 @@ describe('fixtures', () => {
       rule: 'structure.svdp-version',
       severity: 'warning',
     });
+    expect(
+      result.findings.some((finding) => finding.rule === 'structure.attribute-whitespace'),
+      findingsMsg,
+    ).toBe(false);
   });
 });

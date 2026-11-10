@@ -14,10 +14,7 @@ function invoiceDocUrl(invoice: unknown): string {
 }
 
 function currencyIdOf(node: Record<string, unknown>): string | undefined {
-  const value = node.currencyID;
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number') return String(value);
-  return undefined;
+  return attr(node, 'currencyID');
 }
 
 function isTaxAmountPath(path: string): boolean {
