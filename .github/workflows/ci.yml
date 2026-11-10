@@ -39,7 +39,7 @@ jobs:
 
       - name: Smoke test valid invoice
         run: |
-          for fixture in fixtures/valid-*.json; do
+          for fixture in fixtures/valid-*.json fixtures/valid-*.xml; do
             node dist/cli.js "$fixture"
           done
 

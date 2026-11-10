@@ -7,6 +7,7 @@ import { check as checkRequired } from './rules-required.js';
 import { check as checkStructure } from './rules-structure.js';
 import type { Finding, ValidationResult } from './types.js';
 import { attr } from './ubl.js';
+import { xmlToUbl } from './xml.js';
 
 const extraChecks = [checkRequired, checkParties, checkCodes, checkCurrency, checkMath];
 
@@ -35,25 +36,51 @@ export function validateDocument(doc: unknown): ValidationResult {
   return result;
 }
 
+function parseFinding(rule: string, prefix: string, cause: unknown): ValidationResult {
+  const detail = cause instanceof Error ? cause.message : String(cause);
+  return {
+    ok: false,
+    findings: [
+      {
+        rule,
+        severity: 'error',
+        path: '',
+        message: `${prefix}: ${detail}`,
+        docUrl: STRUCTURE,
+      },
+    ],
+  };
+}
+
 export function validateJson(text: string): ValidationResult {
   const stripped = text.startsWith('\uFEFF') ? text.slice(1) : text;
   let doc: unknown;
   try {
     doc = JSON.parse(stripped);
   } catch (cause) {
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    return {
-      ok: false,
-      findings: [
-        {
-          rule: 'structure.json-parse',
-          severity: 'error',
-          path: '',
-          message: `JSON parse failed: ${detail}`,
-          docUrl: STRUCTURE,
-        },
-      ],
-    };
+    return parseFinding('structure.json-parse', 'JSON parse failed', cause);
   }
   return validateDocument(doc);
+}
+
+export function validateXml(text: string): ValidationResult {
+  const stripped = text.startsWith('\uFEFF') ? text.slice(1) : text;
+  let doc: unknown;
+  try {
+    doc = xmlToUbl(stripped);
+  } catch (cause) {
+    return parseFinding('structure.xml-parse', 'XML parse failed', cause);
+  }
+  return validateDocument(doc);
+}
+
+/** True when the first non-whitespace character is `<` (UTF-8 BOM ignored). */
+export function looksLikeXml(text: string): boolean {
+  const body = text.startsWith('\uFEFF') ? text.slice(1) : text;
+  return body.trimStart().startsWith('<');
+}
+
+/** Auto-detect XML vs JSON from the first non-whitespace character. */
+export function validate(text: string): ValidationResult {
+  return looksLikeXml(text) ? validateXml(text) : validateJson(text);
 }
