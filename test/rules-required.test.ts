@@ -262,6 +262,11 @@ describe('required.missing', () => {
     expect(findings[0]?.docUrl).toBe(INVOICE_V1_0);
   });
 
+  it('cites INVOICE_V1_0 when listVersionID is padded " 1.0 "', () => {
+    const findings = check(doc((inv) => delete inv.ID, ' 1.0 '));
+    expect(findings[0]?.docUrl).toBe(INVOICE_V1_0);
+  });
+
   it('errors when a mandatory value is an empty string', () => {
     expect(check(doc((inv) => (inv.ID = L(''))))).toEqual([
       finding('required.missing', 'Invoice/ID', 'ID is missing.'),

@@ -106,9 +106,10 @@ export function documentUrl(
   listVersionID: string | undefined,
 ): string {
   const pages =
-    (typeCode !== undefined ? DATA_STRUCTURE_PAGES[typeCode] : undefined) ?? INVOICE_PAGES;
-  if (listVersionID === '1.0') return pages.v10;
-  if (listVersionID === '1.2') return pages.v12;
-  if (listVersionID === '1.3') return pages.v13;
+    (typeCode !== undefined ? DATA_STRUCTURE_PAGES[typeCode.trim()] : undefined) ?? INVOICE_PAGES;
+  const version = listVersionID?.trim();
+  if (version === '1.0') return pages.v10;
+  if (version === '1.2') return pages.v12;
+  if (version === '1.3') return pages.v13;
   return pages.v11;
 }
