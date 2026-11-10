@@ -1,21 +1,18 @@
 import { MATH } from './docs.js';
 import type { Finding } from './types.js';
-import { children, first, num, text } from './ubl.js';
+import { attr, children, first, num, text } from './ubl.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 // TODO: LHDN does not document a rounding tolerance.
-const TOLERANCE = 0.005;
-
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Compare after rounding to 2 decimals; mismatch if |a-b| > 0.005. */
 function mismatch(a: number, b: number): boolean {
-  return Math.abs(round2(a) - round2(b)) > TOLERANCE;
+  return Math.abs(a - b) > 0.005 + 1e-9;
 }
 
 function error(rule: string, path: string, message: string): Finding {
@@ -198,7 +195,18 @@ function checkTotals(invoice: unknown, findings: Finding[]): void {
 
   const taxInclusive = num(monetary, 'TaxInclusiveAmount');
   const invoiceTax = num(invoice, 'TaxTotal', 'TaxAmount');
-  if (taxInclusive !== undefined && taxExclusive !== undefined && invoiceTax !== undefined) {
+  const taxAmountCurrency = attr(invoice, 'currencyID', 'TaxTotal', 'TaxAmount');
+  const inclusiveCurrency = attr(monetary, 'currencyID', 'TaxInclusiveAmount');
+  const mixedTaxCurrency =
+    taxAmountCurrency !== undefined &&
+    inclusiveCurrency !== undefined &&
+    taxAmountCurrency !== inclusiveCurrency;
+  if (
+    taxInclusive !== undefined &&
+    taxExclusive !== undefined &&
+    invoiceTax !== undefined &&
+    !mixedTaxCurrency
+  ) {
     const expected = taxExclusive + invoiceTax;
     if (mismatch(taxInclusive, expected)) {
       findings.push(

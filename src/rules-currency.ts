@@ -29,21 +29,26 @@ function checkAmountCurrency(
   findings: Finding[],
 ): void {
   const currencyID = currencyIdOf(node);
-  const taxAmount = isTaxAmountPath(path);
-  const allowed = new Set<string>();
-  if (docCurrency !== undefined) allowed.add(docCurrency);
-  if (taxAmount && taxCurrency !== undefined) allowed.add(taxCurrency);
-  if (currencyID !== undefined && allowed.has(currencyID)) return;
 
-  const expected =
-    taxAmount && taxCurrency !== undefined
-      ? `DocumentCurrencyCode "${docCurrency ?? ''}" or TaxCurrencyCode "${taxCurrency}"`
-      : `DocumentCurrencyCode "${docCurrency ?? ''}"`;
+  if (isTaxAmountPath(path) && taxCurrency !== undefined) {
+    if (currencyID === taxCurrency) return;
+    findings.push({
+      rule: 'currency.tax-amount-currency',
+      severity: 'error',
+      path,
+      message: `currencyID "${currencyID ?? ''}" must equal TaxCurrencyCode "${taxCurrency}"`,
+      lhdnCode: 'DC501',
+      docUrl: CURRENCY,
+    });
+    return;
+  }
+
+  if (currencyID !== undefined && currencyID === docCurrency) return;
   findings.push({
     rule: 'currency.amount-currency',
     severity: 'error',
     path,
-    message: `currencyID "${currencyID ?? ''}" must equal ${expected}`,
+    message: `currencyID "${currencyID ?? ''}" must equal DocumentCurrencyCode "${docCurrency ?? ''}"`,
     lhdnCode: 'DC502',
     docUrl: CURRENCY,
   });

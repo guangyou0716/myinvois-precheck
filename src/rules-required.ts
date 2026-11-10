@@ -121,8 +121,9 @@ function checkParty(
   for (const ident of idents) {
     const scheme = attr(ident, 'schemeID', 'ID');
     const idVal = text(ident, 'ID');
-    if (scheme === 'TIN' && idVal !== undefined) hasTin = true;
-    if (isRegScheme(scheme) && idVal !== undefined) hasReg = true;
+    const present = idVal !== undefined && idVal !== '';
+    if (scheme === 'TIN' && present) hasTin = true;
+    if (isRegScheme(scheme) && present) hasReg = true;
   }
   if (!hasTin) {
     requireValue(
@@ -210,7 +211,7 @@ function checkExemption(
   if (text(subtotal, 'TaxCategory', 'ID') !== 'E') return;
   const reason = text(subtotal, 'TaxCategory', 'TaxExemptionReason');
   const path = `${subPath}/TaxCategory/TaxExemptionReason`;
-  if (reason === undefined) {
+  if (reason === undefined || reason === '') {
     push(
       findings,
       'required.exemption-reason',
@@ -301,9 +302,14 @@ function checkLine(
   );
 
   const classifications = children(first(line, 'Item'), 'CommodityClassification');
-  const hasClass = classifications.some(
-    (c) => attr(c, 'listID', 'ItemClassificationCode') === 'CLASS' && text(c, 'ItemClassificationCode') !== undefined,
-  );
+  const hasClass = classifications.some((c) => {
+    const code = text(c, 'ItemClassificationCode');
+    return (
+      attr(c, 'listID', 'ItemClassificationCode') === 'CLASS' &&
+      code !== undefined &&
+      code !== ''
+    );
+  });
   if (!hasClass) {
     requireValue(
       findings,

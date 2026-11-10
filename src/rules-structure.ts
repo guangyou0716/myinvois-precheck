@@ -69,7 +69,7 @@ export function check(doc: unknown): Finding[] {
   if (namespace) findings.push(namespace);
 
   const typeCode = text(invoice, 'InvoiceTypeCode');
-  const listVersionID = attr(invoice, 'listVersionID', 'InvoiceTypeCode');
+  const listVersionID = attr(invoice, 'listVersionID', 'InvoiceTypeCode')?.trim();
   const docUrl = invoiceDocUrl(listVersionID);
 
   if (typeCode === undefined) {

@@ -199,6 +199,15 @@ describe('structure.version', () => {
     expect(check(invoice('1.0', '01'))).toEqual([]);
     expect(check(invoice('1.1', '01', signature))).toEqual([]);
   });
+
+  it('trims listVersionID before comparing with 1.0 and 1.1', () => {
+    expect(check(invoice('  1.0  ', '01'))).toEqual([]);
+    expect(check(invoice(' 1.1 ', '01', signature))).toEqual([]);
+    expect(check(invoice(' 1.1 ', '01')).map((finding) => finding.rule)).toEqual([
+      'structure.signature',
+      'structure.signature',
+    ]);
+  });
 });
 
 describe('structure.signature', () => {

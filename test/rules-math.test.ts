@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { MATH } from '../src/docs.js';
 import { check } from '../src/rules-math.js';
 
-function amt(value: number) {
-  return [{ _: value, currencyID: 'MYR' }];
+function amt(value: number, currencyID = 'MYR') {
+  return [{ _: value, currencyID }];
 }
 
 function line(overrides: Record<string, unknown> = {}) {
@@ -109,6 +109,57 @@ describe('math.line-subtotal', () => {
     const withoutQty: Record<string, unknown> = { ...line() };
     delete withoutQty.InvoicedQuantity;
     expect(ofRule(check(invoice({ InvoiceLine: [withoutQty] })), 'math.line-subtotal')).toEqual([]);
+  });
+
+  it('accepts 1.005 vs 1.01 without a round-then-compare false positive', () => {
+    const findings = ofRule(
+      check(
+        invoice({
+          InvoiceLine: [
+            line({
+              InvoicedQuantity: [{ _: 1, unitCode: 'C62' }],
+              LineExtensionAmount: amt(1.01),
+              Price: [{ PriceAmount: amt(1.005) }],
+              ItemPriceExtension: [{ Amount: amt(1.01) }],
+              TaxTotal: [
+                {
+                  TaxAmount: amt(0),
+                  TaxSubtotal: [
+                    {
+                      TaxableAmount: amt(1.01),
+                      TaxAmount: amt(0),
+                      TaxCategory: [{ ID: [{ _: '01' }] }],
+                    },
+                  ],
+                },
+              ],
+            }),
+          ],
+          TaxTotal: [
+            {
+              TaxAmount: amt(0),
+              TaxSubtotal: [
+                {
+                  TaxableAmount: amt(1.01),
+                  TaxAmount: amt(0),
+                  TaxCategory: [{ ID: [{ _: '01' }] }],
+                },
+              ],
+            },
+          ],
+          LegalMonetaryTotal: [
+            {
+              LineExtensionAmount: amt(1.01),
+              TaxExclusiveAmount: amt(1.01),
+              TaxInclusiveAmount: amt(1.01),
+              PayableAmount: amt(1.01),
+            },
+          ],
+        }),
+      ),
+      'math.line-subtotal',
+    );
+    expect(findings).toEqual([]);
   });
 });
 
@@ -408,6 +459,58 @@ describe('math.total-incl', () => {
         docUrl: MATH,
       },
     ]);
+  });
+
+  it('skips the check when TaxTotal/TaxAmount currency differs from TaxInclusiveAmount currency', () => {
+    const findings = ofRule(
+      check(
+        invoice({
+          DocumentCurrencyCode: [{ _: 'USD' }],
+          TaxCurrencyCode: [{ _: 'MYR' }],
+          TaxTotal: [
+            {
+              TaxAmount: amt(27, 'MYR'),
+              TaxSubtotal: [
+                {
+                  TaxableAmount: amt(100, 'USD'),
+                  TaxAmount: amt(27, 'MYR'),
+                  TaxCategory: [{ ID: [{ _: '01' }] }],
+                },
+              ],
+            },
+          ],
+          LegalMonetaryTotal: [
+            {
+              LineExtensionAmount: amt(100, 'USD'),
+              TaxExclusiveAmount: amt(100, 'USD'),
+              TaxInclusiveAmount: amt(106, 'USD'),
+              PayableAmount: amt(106, 'USD'),
+            },
+          ],
+          InvoiceLine: [
+            line({
+              LineExtensionAmount: amt(100, 'USD'),
+              TaxTotal: [
+                {
+                  TaxAmount: amt(27, 'MYR'),
+                  TaxSubtotal: [
+                    {
+                      TaxableAmount: amt(100, 'USD'),
+                      TaxAmount: amt(27, 'MYR'),
+                      TaxCategory: [{ ID: [{ _: '01' }] }],
+                    },
+                  ],
+                },
+              ],
+              Price: [{ PriceAmount: amt(50, 'USD') }],
+              ItemPriceExtension: [{ Amount: amt(100, 'USD') }],
+            }),
+          ],
+        }),
+      ),
+      'math.total-incl',
+    );
+    expect(findings).toEqual([]);
   });
 });
 

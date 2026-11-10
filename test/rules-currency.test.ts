@@ -105,42 +105,12 @@ describe('currency.amount-currency', () => {
     ]);
   });
 
-  it('allows TaxTotal/TaxAmount and TaxSubtotal/TaxAmount to use TaxCurrencyCode', () => {
+  it('flags tax amounts against DocumentCurrencyCode when TaxCurrencyCode is absent', () => {
     const findings = check(
       myrInvoice({
-        TaxCurrencyCode: [{ _: 'USD' }],
         TaxTotal: [
           {
-            TaxAmount: [{ _: 2, currencyID: 'USD' }],
-            TaxSubtotal: [
-              {
-                TaxableAmount: [{ _: 100, currencyID: 'MYR' }],
-                TaxAmount: [{ _: 2, currencyID: 'USD' }],
-              },
-            ],
-          },
-        ],
-        InvoiceLine: [
-          {
-            TaxTotal: [
-              {
-                TaxAmount: [{ _: 2, currencyID: 'USD' }],
-              },
-            ],
-          },
-        ],
-      }),
-    );
-    expect(findings.filter((f) => f.rule === 'currency.amount-currency')).toEqual([]);
-  });
-
-  it('flags tax amounts that match neither document nor tax currency', () => {
-    const findings = check(
-      myrInvoice({
-        TaxCurrencyCode: [{ _: 'USD' }],
-        TaxTotal: [
-          {
-            TaxAmount: [{ _: 2, currencyID: 'EUR' }],
+            TaxAmount: [{ _: 6, currencyID: 'USD' }],
           },
         ],
       }),
@@ -150,8 +120,136 @@ describe('currency.amount-currency', () => {
         rule: 'currency.amount-currency',
         severity: 'error',
         path: 'Invoice/TaxTotal/TaxAmount',
-        message: 'currencyID "EUR" must equal DocumentCurrencyCode "MYR" or TaxCurrencyCode "USD"',
+        message: 'currencyID "USD" must equal DocumentCurrencyCode "MYR"',
         lhdnCode: 'DC502',
+        docUrl: CURRENCY,
+      },
+    ]);
+  });
+});
+
+describe('currency.tax-amount-currency', () => {
+  it('accepts a USD document with TaxCurrencyCode MYR and MYR tax amounts', () => {
+    const findings = check(
+      usdInvoice({
+        TaxCurrencyCode: [{ _: 'MYR' }],
+        TaxTotal: [
+          {
+            TaxAmount: [{ _: 27, currencyID: 'MYR' }],
+            TaxSubtotal: [
+              {
+                TaxableAmount: [{ _: 100, currencyID: 'USD' }],
+                TaxAmount: [{ _: 27, currencyID: 'MYR' }],
+              },
+            ],
+          },
+        ],
+        InvoiceLine: [
+          {
+            LineExtensionAmount: [{ _: 100, currencyID: 'USD' }],
+            TaxTotal: [
+              {
+                TaxAmount: [{ _: 27, currencyID: 'MYR' }],
+                TaxSubtotal: [
+                  {
+                    TaxableAmount: [{ _: 100, currencyID: 'USD' }],
+                    TaxAmount: [{ _: 27, currencyID: 'MYR' }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(findings.filter((f) => f.rule.startsWith('currency.'))).toEqual([]);
+  });
+
+  it('flags a USD tax amount when TaxCurrencyCode is MYR', () => {
+    const findings = check(
+      usdInvoice({
+        TaxCurrencyCode: [{ _: 'MYR' }],
+        TaxTotal: [
+          {
+            TaxAmount: [{ _: 6, currencyID: 'USD' }],
+          },
+        ],
+      }),
+    );
+    expect(findings.filter((f) => f.rule === 'currency.tax-amount-currency')).toEqual([
+      {
+        rule: 'currency.tax-amount-currency',
+        severity: 'error',
+        path: 'Invoice/TaxTotal/TaxAmount',
+        message: 'currencyID "USD" must equal TaxCurrencyCode "MYR"',
+        lhdnCode: 'DC501',
+        docUrl: CURRENCY,
+      },
+    ]);
+  });
+
+  it('flags invoice and line TaxTotal/TaxAmount and TaxSubtotal/TaxAmount that are not TaxCurrencyCode', () => {
+    const findings = check(
+      usdInvoice({
+        TaxCurrencyCode: [{ _: 'MYR' }],
+        TaxTotal: [
+          {
+            TaxAmount: [{ _: 6, currencyID: 'USD' }],
+            TaxSubtotal: [
+              {
+                TaxableAmount: [{ _: 100, currencyID: 'USD' }],
+                TaxAmount: [{ _: 6, currencyID: 'USD' }],
+              },
+            ],
+          },
+        ],
+        InvoiceLine: [
+          {
+            TaxTotal: [
+              {
+                TaxAmount: [{ _: 6, currencyID: 'USD' }],
+                TaxSubtotal: [
+                  {
+                    TaxAmount: [{ _: 6, currencyID: 'USD' }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(findings.filter((f) => f.rule === 'currency.tax-amount-currency')).toEqual([
+      {
+        rule: 'currency.tax-amount-currency',
+        severity: 'error',
+        path: 'Invoice/TaxTotal/TaxAmount',
+        message: 'currencyID "USD" must equal TaxCurrencyCode "MYR"',
+        lhdnCode: 'DC501',
+        docUrl: CURRENCY,
+      },
+      {
+        rule: 'currency.tax-amount-currency',
+        severity: 'error',
+        path: 'Invoice/TaxTotal/TaxSubtotal/TaxAmount',
+        message: 'currencyID "USD" must equal TaxCurrencyCode "MYR"',
+        lhdnCode: 'DC501',
+        docUrl: CURRENCY,
+      },
+      {
+        rule: 'currency.tax-amount-currency',
+        severity: 'error',
+        path: 'Invoice/InvoiceLine/TaxTotal/TaxAmount',
+        message: 'currencyID "USD" must equal TaxCurrencyCode "MYR"',
+        lhdnCode: 'DC501',
+        docUrl: CURRENCY,
+      },
+      {
+        rule: 'currency.tax-amount-currency',
+        severity: 'error',
+        path: 'Invoice/InvoiceLine/TaxTotal/TaxSubtotal/TaxAmount',
+        message: 'currencyID "USD" must equal TaxCurrencyCode "MYR"',
+        lhdnCode: 'DC501',
         docUrl: CURRENCY,
       },
     ]);

@@ -72,6 +72,17 @@ describe('run', () => {
     expect(io.out).toBe('');
   });
 
+  it('validates remaining files when one is unreadable and exits 2', () => {
+    const io = fakeIo({
+      'ok.json': VALID_1_1,
+      'bad.json': '{}',
+    });
+    expect(run(['ok.json', 'missing.json', 'bad.json'], io)).toBe(2);
+    expect(io.err).toContain('Cannot read missing.json');
+    expect(io.out).toContain('ok.json  1.1  PASS');
+    expect(io.out).toContain('bad.json  -  FAIL');
+  });
+
   it('validates inline JSON and exits 1 on error findings', () => {
     const io = fakeIo({ 'inv.json': '{}' });
     expect(run(['inv.json'], io)).toBe(1);

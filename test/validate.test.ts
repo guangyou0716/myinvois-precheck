@@ -37,6 +37,12 @@ describe('validateJson', () => {
     expect(result.ok).toBe(true);
     expect(result.version).toBe('1.1');
   });
+
+  it('strips a leading UTF-8 BOM before parsing', () => {
+    const result = validateJson(`\uFEFF${loadFixture('valid-invoice-1.1.json')}`);
+    expect(result.ok).toBe(true);
+    expect(result.version).toBe('1.1');
+  });
 });
 
 describe('validateDocument', () => {

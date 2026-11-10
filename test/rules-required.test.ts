@@ -413,6 +413,49 @@ describe('required.missing', () => {
         ),
       ).toEqual([]);
     });
+
+    it.each(['', ' ', '\t  '])('does not count TIN %j as present', (id) => {
+      expect(
+        check(
+          doc((inv) => {
+            partyOf(inv, 'AccountingSupplierParty').PartyIdentification = [
+              ident('TIN', id),
+              ident('BRN', '202001234567'),
+            ];
+          }),
+        ),
+      ).toEqual([
+        finding(
+          'required.missing',
+          'Invoice/AccountingSupplierParty/Party/PartyIdentification[TIN]',
+          'PartyIdentification with schemeID TIN is missing.',
+        ),
+      ]);
+    });
+
+    it.each([
+      ['NRIC', ''],
+      ['BRN', ' '],
+      ['PASSPORT', '\t'],
+      ['ARMY', '  \n'],
+    ])('does not count %s identification %j as present', (scheme, id) => {
+      expect(
+        check(
+          doc((inv) => {
+            partyOf(inv, 'AccountingCustomerParty').PartyIdentification = [
+              ident('TIN', 'C0987654321'),
+              ident(scheme, id),
+            ];
+          }),
+        ),
+      ).toEqual([
+        finding(
+          'required.missing',
+          'Invoice/AccountingCustomerParty/Party/PartyIdentification',
+          'PartyIdentification with schemeID NRIC, BRN, PASSPORT, or ARMY is missing.',
+        ),
+      ]);
+    });
   });
 
   describe('InvoiceLine', () => {
@@ -487,6 +530,23 @@ describe('required.missing', () => {
           }),
         ),
       ).toEqual([finding('required.missing', path, message)]);
+    });
+
+    it.each(['', '   '])('does not count CLASS ItemClassificationCode %j as present', (code) => {
+      expect(
+        check(
+          doc((inv) => {
+            (inv.InvoiceLine as Array<{ Item: Array<Record<string, unknown>> }>)[0].Item[0].CommodityClassification =
+              [{ ItemClassificationCode: [{ _: code, listID: 'CLASS' }] }];
+          }),
+        ),
+      ).toEqual([
+        finding(
+          'required.missing',
+          'Invoice/InvoiceLine[0]/Item/CommodityClassification/ItemClassificationCode[CLASS]',
+          'ItemClassificationCode with listID CLASS is missing.',
+        ),
+      ]);
     });
 
     it('does not require TaxAmount on a line TaxSubtotal', () => {
@@ -686,6 +746,27 @@ describe('required.exemption-reason', () => {
               .TaxSubtotal[0]
           );
           sub.TaxCategory = [{ ID: L('E') }];
+        }),
+      ),
+    ).toEqual([
+      finding(
+        'required.exemption-reason',
+        'Invoice/TaxTotal/TaxSubtotal[0]/TaxCategory/TaxExemptionReason',
+        'Mandatory if tax exemption is applicable',
+        { severity: 'warning' },
+      ),
+    ]);
+  });
+
+  it.each(['', '   '])('warns when TaxExemptionReason is %j for category E', (reason) => {
+    expect(
+      check(
+        doc((inv) => {
+          const sub = (
+            (inv.TaxTotal as Array<{ TaxSubtotal: Array<Record<string, unknown>> }>)[0]
+              .TaxSubtotal[0]
+          );
+          sub.TaxCategory = [{ ID: L('E'), TaxExemptionReason: L(reason) }];
         }),
       ),
     ).toEqual([

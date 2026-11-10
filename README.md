@@ -43,10 +43,10 @@ Each finding cites the matching LHDN SDK page: validator error pages under [docu
 | required | Mandatory invoice, party, tax, monetary-total, and line fields; `IssueDate` / `IssueTime` format; max lengths; amount values limited to 26 digits; tax exemption reason when tax type is `E` | CF378 |
 | parties | Supplier and buyer TIN length and FAQ format; NRIC / PASSPORT / ARMY / BRN length; SST and tourism tax (TTX) format; email and phone; address line, city, and postcode | CF345, CF346, CF400, CF401, CF404–CF412 |
 | codes | Invoice type, currency, country, state, tax type, MSIC, classification, unit, and payment method against LHDN code tables; Malaysian state codes on non-`MYS` addresses | CV302, CV316, CV317 |
-| currency | Amount `currencyID` vs document (and tax) currency; `TaxCurrencyCode` is document currency or `MYR`; `SourceCurrencyCode` matches document currency; exchange rate when document currency is not `MYR` | DC502, DC510, DC512 |
+| currency | Amount `currencyID` vs document (and tax) currency; tax amounts must use `TaxCurrencyCode` when it is present; `TaxCurrencyCode` is document currency or `MYR`; `SourceCurrencyCode` matches document currency; exchange rate when document currency is not `MYR` | DC501, DC502, DC510, DC512 |
 | math | Line and invoice arithmetic against LHDN mathematical mappings (price × quantity, allowances/charges, tax sums, payable amount) | none published |
 
-Where LHDN publishes an error code, a finding includes it: CF345, CF346, CF378, CF400, CF401, CF404–CF412, CV302, CV316, CV317, DC502, DC510, DC512. Math rules have no published LHDN error code.
+Where LHDN publishes an error code, a finding includes it: CF345, CF346, CF378, CF400, CF401, CF404–CF412, CV302, CV316, CV317, DC501, DC502, DC510, DC512. Math rules have no published LHDN error code.
 
 TIN pattern check (`parties.tin-format`) is a **warning**, based on the [LHDN SDK FAQ](https://sdk.myinvois.hasil.gov.my/faq/): prefix `IG` for individuals; `C`, `CS`, `D`, `F`, `FA`, `PT`, `TA`, `TC`, `TN`, `TR`, `TP`, `J`, `LE` for non-individuals; no leading zero after the prefix; non-individual TINs end in `0`. General TINs `EI` + 11 digits are accepted.
 

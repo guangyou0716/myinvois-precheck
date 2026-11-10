@@ -36,9 +36,10 @@ export function validateDocument(doc: unknown): ValidationResult {
 }
 
 export function validateJson(text: string): ValidationResult {
+  const stripped = text.startsWith('\uFEFF') ? text.slice(1) : text;
+  let doc: unknown;
   try {
-    const doc: unknown = JSON.parse(text);
-    return validateDocument(doc);
+    doc = JSON.parse(stripped);
   } catch (cause) {
     const detail = cause instanceof Error ? cause.message : String(cause);
     return {
@@ -54,4 +55,5 @@ export function validateJson(text: string): ValidationResult {
       ],
     };
   }
+  return validateDocument(doc);
 }

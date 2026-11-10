@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { readFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { formatJson, formatText } from './report.js';
 import { validateJson } from './validate.js';
 import type { ValidationResult } from './types.js';
@@ -82,6 +82,7 @@ export function run(
   }
 
   const results: { file: string; result: ValidationResult }[] = [];
+  let unreadable = false;
   for (const file of files) {
     let text: string;
     try {
@@ -89,7 +90,8 @@ export function run(
     } catch (cause) {
       const detail = cause instanceof Error ? cause.message : String(cause);
       io.stderr(`Cannot read ${file}: ${detail}\n`);
-      return 2;
+      unreadable = true;
+      continue;
     }
     results.push({ file, result: validateJson(text) });
   }
@@ -110,13 +112,18 @@ export function run(
     }
   }
 
+  if (unreadable) return 2;
   return results.some((item) => !item.result.ok) ? 1 : 0;
 }
 
 function isEntryPoint(): boolean {
   const script = process.argv[1];
   if (script === undefined) return false;
-  return import.meta.url === pathToFileURL(script).href;
+  try {
+    return realpathSync(script) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
 }
 
 if (isEntryPoint()) {
@@ -131,5 +138,5 @@ if (isEntryPoint()) {
       return readFileSync(p, 'utf8');
     },
   });
-  process.exit(code);
+  process.exitCode = code;
 }
