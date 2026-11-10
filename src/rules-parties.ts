@@ -1,10 +1,18 @@
-import { CORE_FIELDS, FAQ } from './docs.js';
+import { CORE_FIELDS, FAQ, TAXPAYER } from './docs.js';
 import type { Finding } from './types.js';
 import { attr, children, first, text } from './ubl.js';
 
 const NON_INDIVIDUAL_TIN_PREFIXES = ['C', 'CS', 'D', 'F', 'FA', 'PT', 'TA', 'TC', 'TN', 'TR', 'TP', 'J', 'LE'].sort(
   (a, b) => b.length - a.length,
 );
+
+const TIN_010 = 'EI00000000010';
+const TIN_020 = 'EI00000000020';
+const TIN_030 = 'EI00000000030';
+const TIN_040 = 'EI00000000040';
+const GENERAL_TIN = /^EI\d{11}$/;
+const SELF_BILLED_TYPES = new Set(['11', '12', '13', '14']);
+const RULE_GENERAL_TIN = 'parties.general-tin';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -276,6 +284,179 @@ function checkParty(findings: Finding[], party: unknown, basePath: string, suppl
   checkAddress(findings, party, basePath, supplier);
 }
 
+function partyTin(party: unknown): string | undefined {
+  for (const ident of children(party, 'PartyIdentification')) {
+    if (attr(ident, 'schemeID', 'ID') === 'TIN') return text(ident, 'ID');
+  }
+  return undefined;
+}
+
+function partyId(party: unknown, scheme: string): string | undefined {
+  for (const ident of children(party, 'PartyIdentification')) {
+    if (attr(ident, 'schemeID', 'ID') === scheme) return text(ident, 'ID');
+  }
+  return undefined;
+}
+
+function isNaId(value: string | undefined): boolean {
+  return value !== undefined && value.trim().toUpperCase() === 'NA';
+}
+
+function isActualId(value: string | undefined): boolean {
+  if (value === undefined) return false;
+  const trimmed = value.trim();
+  return trimmed !== '' && trimmed.toUpperCase() !== 'NA';
+}
+
+function isGeneralTin(tin: string | undefined): tin is string {
+  return tin !== undefined && GENERAL_TIN.test(tin);
+}
+
+function isForeignCountry(country: string | undefined): boolean {
+  return country !== undefined && country !== 'MYS';
+}
+
+function hasNon004Class(invoice: unknown): boolean {
+  for (const line of children(invoice, 'InvoiceLine')) {
+    const classifications = children(first(line, 'Item'), 'CommodityClassification');
+    for (const node of classifications) {
+      if (attr(node, 'listID', 'ItemClassificationCode') !== 'CLASS') continue;
+      const code = text(node, 'ItemClassificationCode');
+      if (code !== undefined && code !== '004') return true;
+    }
+  }
+  return false;
+}
+
+function generalTinFinding(
+  findings: Finding[],
+  lhdnCode: string,
+  path: string,
+  message: string,
+  severity: Finding['severity'] = 'error',
+): void {
+  push(findings, RULE_GENERAL_TIN, severity, path, message, TAXPAYER, lhdnCode);
+}
+
+function checkGeneralTin(findings: Finding[], invoice: Record<string, unknown>): void {
+  const supplier = first(invoice, 'AccountingSupplierParty', 'Party');
+  const buyer = first(invoice, 'AccountingCustomerParty', 'Party');
+  const supplierPath = 'Invoice/AccountingSupplierParty/Party/PartyIdentification[TIN]';
+  const buyerPath = 'Invoice/AccountingCustomerParty/Party/PartyIdentification[TIN]';
+  const supplierTin = partyTin(supplier);
+  const buyerTin = partyTin(buyer);
+  const typeCode = text(invoice, 'InvoiceTypeCode');
+  const selfBilled = typeCode !== undefined && SELF_BILLED_TYPES.has(typeCode);
+  const supplierCountry = text(supplier, 'PostalAddress', 'Country', 'IdentificationCode');
+  const supplierForeign = isForeignCountry(supplierCountry);
+  const non004 = hasNon004Class(invoice);
+
+  if (supplierTin === TIN_020) {
+    if (buyerTin === TIN_010) {
+      generalTinFinding(
+        findings,
+        'ERR211',
+        supplierPath,
+        'ERR211: General TIN 020 is for buyers only and cannot be used on a consolidated invoice.',
+      );
+    } else {
+      generalTinFinding(
+        findings,
+        'ERR208',
+        supplierPath,
+        'ERR208: General TIN 020 is for buyers only.',
+      );
+    }
+  }
+
+  if (buyerTin === TIN_030) {
+    generalTinFinding(
+      findings,
+      'ERR229',
+      buyerPath,
+      'ERR229: General TIN 030 is for foreign suppliers only.',
+    );
+  }
+
+  checkGeneralTinParty(findings, supplier, supplierPath, supplierTin, non004);
+  checkGeneralTinParty(findings, buyer, buyerPath, buyerTin, non004);
+
+  if (buyerTin === TIN_010 && isActualId(partyId(buyer, 'BRN'))) {
+    generalTinFinding(
+      findings,
+      'ERR237',
+      buyerPath,
+      'ERR237: Buyer TIN EI00000000010 cannot be used with an actual BRN.',
+    );
+  }
+
+  if (supplierTin === TIN_010 && isActualId(partyId(supplier, 'BRN'))) {
+    generalTinFinding(
+      findings,
+      'ERR217',
+      supplierPath,
+      'ERR217: Supplier TIN EI00000000010 cannot be used with an actual BRN.',
+    );
+  }
+
+  if (supplierTin === TIN_010 && supplierForeign) {
+    generalTinFinding(
+      findings,
+      'ERR213',
+      supplierPath,
+      'ERR213: General TIN 010 is not applicable for a foreign supplier (inferred from supplier postal address country code not being MYS).',
+      'warning',
+    );
+  }
+
+  if (selfBilled && supplierForeign && isGeneralTin(supplierTin) && supplierTin !== TIN_030) {
+    generalTinFinding(
+      findings,
+      'ERR220',
+      supplierPath,
+      'ERR220: Only General TIN 030 is allowed for a foreign supplier on a self-billed document (inferred from supplier postal address country code not being MYS).',
+      'warning',
+    );
+  }
+}
+
+function checkGeneralTinParty(
+  findings: Finding[],
+  party: unknown,
+  path: string,
+  tin: string | undefined,
+  non004: boolean,
+): void {
+  if (!isGeneralTin(tin)) return;
+
+  if (tin !== TIN_010 && (isActualId(partyId(party, 'NRIC')) || isActualId(partyId(party, 'ARMY')))) {
+    generalTinFinding(
+      findings,
+      'ERR222',
+      path,
+      'ERR222: Only General TIN 010 is allowed with NRIC or ARMY identification.',
+    );
+  }
+
+  if (tin === TIN_040 && isActualId(partyId(party, 'BRN'))) {
+    generalTinFinding(
+      findings,
+      'ERR255',
+      path,
+      'ERR255: General TIN 040 requires BRN value NA.',
+    );
+  }
+
+  if (tin === TIN_010 && non004 && (isNaId(partyId(party, 'BRN')) || isNaId(partyId(party, 'NRIC')))) {
+    generalTinFinding(
+      findings,
+      'ERR236',
+      path,
+      'ERR236: General TIN 010 with BRN or NRIC value NA is only allowed when every CLASS classification code is 004.',
+    );
+  }
+}
+
 export function check(doc: unknown): Finding[] {
   const invoice = first(doc, 'Invoice');
   if (!isRecord(invoice)) return [];
@@ -293,5 +474,6 @@ export function check(doc: unknown): Finding[] {
     'Invoice/AccountingCustomerParty/Party',
     false,
   );
+  checkGeneralTin(findings, invoice);
   return findings;
 }
