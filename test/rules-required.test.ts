@@ -938,4 +938,82 @@ describe('required.original-reference', () => {
       ),
     ]);
   });
+
+  it('errors when UUID is an empty string', () => {
+    expect(
+      check(
+        asNote('02', (inv) => {
+          inv.BillingReference = originalRef('', 'INV12345');
+        }),
+      ),
+    ).toEqual([
+      finding(
+        'required.original-reference',
+        'Invoice/BillingReference/InvoiceDocumentReference/UUID',
+        'UUID is missing. Original e-Invoice reference UUID and ID are both required.',
+        { docUrl: CREDIT_V1_1 },
+      ),
+    ]);
+  });
+
+  it('errors when ID is an empty string', () => {
+    expect(
+      check(
+        asNote('02', (inv) => {
+          inv.BillingReference = originalRef('F9D425P6DS7D8IU', '');
+        }),
+      ),
+    ).toEqual([
+      finding(
+        'required.original-reference',
+        'Invoice/BillingReference/InvoiceDocumentReference/ID',
+        'ID is missing. Original e-Invoice reference UUID and ID are both required.',
+        { docUrl: CREDIT_V1_1 },
+      ),
+    ]);
+  });
+
+  it('indexes the second BillingReference when it is missing ID', () => {
+    const findings = check(
+      asNote('02', (inv) => {
+        inv.BillingReference = [
+          ...originalRef('F9D425P6DS7D8IU', 'INV12345'),
+          ...originalRef('F9D425P6DS7D8IU', undefined),
+        ];
+      }),
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.rule).toBe('required.original-reference');
+    expect(findings[0]?.path).toContain('BillingReference[1]');
+  });
+
+  it('indexes the second InvoiceDocumentReference when it is missing UUID', () => {
+    const findings = check(
+      asNote('02', (inv) => {
+        inv.BillingReference = [
+          {
+            InvoiceDocumentReference: [
+              { UUID: L('F9D425P6DS7D8IU'), ID: L('INV12345') },
+              { ID: L('INV67890') },
+            ],
+          },
+        ];
+      }),
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.rule).toBe('required.original-reference');
+    expect(findings[0]?.severity).toBe('error');
+    expect(findings[0]?.path).toContain('InvoiceDocumentReference[1]');
+  });
+
+  it('accepts UUID and ID at the 26-character boundary', () => {
+    expect(
+      check(
+        asNote('02', (inv) => {
+          inv.BillingReference = originalRef('U'.repeat(26), 'I'.repeat(26));
+        }),
+      ),
+    ).toEqual([]);
+  });
 });
+
