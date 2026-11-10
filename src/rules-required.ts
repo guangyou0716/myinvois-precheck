@@ -189,10 +189,9 @@ function checkParty(
       docUrl,
     );
     const msicName = attr(party, 'name', 'IndustryClassificationCode');
-    const trimmedName = typeof msicName === 'string' ? msicName.trim() : msicName;
     requireValue(
       findings,
-      trimmedName === '' ? undefined : trimmedName,
+      msicName,
       `${basePath}/IndustryClassificationCode/name`,
       'IndustryClassificationCode name',
       docUrl,

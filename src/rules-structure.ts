@@ -42,6 +42,39 @@ function namespaceFinding(doc: Record<string, unknown>): Finding | undefined {
   };
 }
 
+function attributePath(path: string, key: string): string {
+  return path === '' ? key : `${path}@${key}`;
+}
+
+function childPath(path: string, key: string): string {
+  return path === '' ? key : `${path}/${key}`;
+}
+
+/** UBL JSON attributes are string-valued keys other than `_`; child elements are arrays. */
+function walkAttributeWhitespace(node: unknown, path: string, findings: Finding[]): void {
+  if (!isRecord(node)) return;
+  for (const [key, value] of Object.entries(node)) {
+    if (key === '_') continue;
+    if (typeof value === 'string') {
+      if (value !== value.trim()) {
+        findings.push({
+          rule: 'structure.attribute-whitespace',
+          severity: 'warning',
+          path: attributePath(path, key),
+          message:
+            'Attribute value has surrounding whitespace that MyInvois may reject; it was checked as the trimmed value.',
+          docUrl: STRUCTURE,
+        });
+      }
+    } else if (Array.isArray(value)) {
+      const next = childPath(path, key);
+      for (const child of value) {
+        walkAttributeWhitespace(child, next, findings);
+      }
+    }
+  }
+}
+
 export function check(doc: unknown): Finding[] {
   const findings: Finding[] = [];
 
@@ -68,78 +101,78 @@ export function check(doc: unknown): Finding[] {
       docUrl: STRUCTURE,
     });
     if (namespace) findings.push(namespace);
-    return findings;
-  }
+  } else {
+    if (namespace) findings.push(namespace);
 
-  if (namespace) findings.push(namespace);
+    const typeCode = text(invoice, 'InvoiceTypeCode');
+    const listVersionID = attr(invoice, 'listVersionID', 'InvoiceTypeCode');
+    const docUrl = documentUrl(typeCode, listVersionID);
 
-  const typeCode = text(invoice, 'InvoiceTypeCode');
-  const listVersionID = attr(invoice, 'listVersionID', 'InvoiceTypeCode')?.trim();
-  const docUrl = documentUrl(typeCode, listVersionID);
-
-  if (typeCode === undefined) {
-    findings.push({
-      rule: 'structure.type-code',
-      severity: 'error',
-      path: 'Invoice/InvoiceTypeCode',
-      message: 'InvoiceTypeCode is missing.',
-      docUrl,
-    });
-  } else if (!SUPPORTED_TYPES.has(typeCode)) {
-    findings.push({
-      rule: 'structure.type-code',
-      severity: 'error',
-      path: 'Invoice/InvoiceTypeCode',
-      message: `InvoiceTypeCode "${typeCode}" is not supported; only ${SUPPORTED_TYPE_LIST} are supported.`,
-      docUrl,
-    });
-  }
-
-  if (listVersionID === undefined || !SUPPORTED_VERSIONS.has(listVersionID)) {
-    const detail =
-      listVersionID === undefined
-        ? 'InvoiceTypeCode listVersionID is missing'
-        : `InvoiceTypeCode listVersionID "${listVersionID}" is not supported`;
-    findings.push({
-      rule: 'structure.version',
-      severity: 'error',
-      path: 'Invoice/InvoiceTypeCode/listVersionID',
-      message: `${detail}.`,
-      docUrl,
-    });
-  }
-
-  // Presence only. v1.1 and v1.3 make Issuer's Digital Signature mandatory; it is not verified.
-  if (listVersionID !== undefined && SIGNATURE_REQUIRED_VERSIONS.has(listVersionID)) {
-    if (children(invoice, 'Signature').length === 0) {
+    if (typeCode === undefined) {
       findings.push({
-        rule: 'structure.signature',
+        rule: 'structure.type-code',
         severity: 'error',
-        path: 'Invoice/Signature',
-        message: `Signature is missing. Version ${listVersionID} Issuer's Digital Signature is Mandatory [1-1].`,
+        path: 'Invoice/InvoiceTypeCode',
+        message: 'InvoiceTypeCode is missing.',
+        docUrl,
+      });
+    } else if (!SUPPORTED_TYPES.has(typeCode)) {
+      findings.push({
+        rule: 'structure.type-code',
+        severity: 'error',
+        path: 'Invoice/InvoiceTypeCode',
+        message: `InvoiceTypeCode "${typeCode}" is not supported; only ${SUPPORTED_TYPE_LIST} are supported.`,
         docUrl,
       });
     }
-    if (children(invoice, 'UBLExtensions').length === 0) {
+
+    if (listVersionID === undefined || !SUPPORTED_VERSIONS.has(listVersionID)) {
+      const detail =
+        listVersionID === undefined
+          ? 'InvoiceTypeCode listVersionID is missing'
+          : `InvoiceTypeCode listVersionID "${listVersionID}" is not supported`;
       findings.push({
-        rule: 'structure.signature',
+        rule: 'structure.version',
         severity: 'error',
-        path: 'Invoice/UBLExtensions',
-        message: `UBLExtensions is missing. Version ${listVersionID} Issuer's Digital Signature is Mandatory [1-1].`,
+        path: 'Invoice/InvoiceTypeCode/listVersionID',
+        message: `${detail}.`,
+        docUrl,
+      });
+    }
+
+    // Presence only. v1.1 and v1.3 make Issuer's Digital Signature mandatory; it is not verified.
+    if (listVersionID !== undefined && SIGNATURE_REQUIRED_VERSIONS.has(listVersionID)) {
+      if (children(invoice, 'Signature').length === 0) {
+        findings.push({
+          rule: 'structure.signature',
+          severity: 'error',
+          path: 'Invoice/Signature',
+          message: `Signature is missing. Version ${listVersionID} Issuer's Digital Signature is Mandatory [1-1].`,
+          docUrl,
+        });
+      }
+      if (children(invoice, 'UBLExtensions').length === 0) {
+        findings.push({
+          rule: 'structure.signature',
+          severity: 'error',
+          path: 'Invoice/UBLExtensions',
+          message: `UBLExtensions is missing. Version ${listVersionID} Issuer's Digital Signature is Mandatory [1-1].`,
+          docUrl,
+        });
+      }
+    }
+
+    if (listVersionID !== undefined && SVDP_VERSIONS.has(listVersionID)) {
+      findings.push({
+        rule: 'structure.svdp-version',
+        severity: 'warning',
+        path: 'Invoice/InvoiceTypeCode/listVersionID',
+        message: `Document version ${listVersionID} is only for the e-Invoice Voluntary Disclosure (VD) Programme (SVDP) until 31 December 2027. Normal submissions should use 1.0 or 1.1.`,
         docUrl,
       });
     }
   }
 
-  if (listVersionID !== undefined && SVDP_VERSIONS.has(listVersionID)) {
-    findings.push({
-      rule: 'structure.svdp-version',
-      severity: 'warning',
-      path: 'Invoice/InvoiceTypeCode/listVersionID',
-      message: `Document version ${listVersionID} is only for the e-Invoice Voluntary Disclosure (VD) Programme (SVDP) until 31 December 2027. Normal submissions should use 1.0 or 1.1.`,
-      docUrl,
-    });
-  }
-
+  walkAttributeWhitespace(doc, '', findings);
   return findings;
 }

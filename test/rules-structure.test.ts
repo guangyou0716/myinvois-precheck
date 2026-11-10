@@ -269,17 +269,24 @@ describe('structure.version', () => {
   });
 
   it('trims listVersionID before comparing with 1.0, 1.1, 1.2, and 1.3', () => {
-    expect(check(invoice('  1.0  ', '01'))).toEqual([]);
-    expect(check(invoice(' 1.1 ', '01', signature))).toEqual([]);
+    expect(check(invoice('  1.0  ', '01')).map((finding) => finding.rule)).toEqual([
+      'structure.attribute-whitespace',
+    ]);
+    expect(check(invoice(' 1.1 ', '01', signature)).map((finding) => finding.rule)).toEqual([
+      'structure.attribute-whitespace',
+    ]);
     expect(check(invoice(' 1.1 ', '01')).map((finding) => finding.rule)).toEqual([
       'structure.signature',
       'structure.signature',
+      'structure.attribute-whitespace',
     ]);
     expect(check(invoice('  1.2  ', '01')).map((finding) => finding.rule)).toEqual([
       'structure.svdp-version',
+      'structure.attribute-whitespace',
     ]);
     expect(check(invoice(' 1.3 ', '01', signature)).map((finding) => finding.rule)).toEqual([
       'structure.svdp-version',
+      'structure.attribute-whitespace',
     ]);
   });
 });
@@ -410,6 +417,76 @@ describe('clean invoice', () => {
     for (const finding of check(invoice('1.1', '03'))) {
       expect(finding.lhdnCode).toBeUndefined();
     }
+  });
+});
+
+describe('structure.attribute-whitespace', () => {
+  const whitespaceFinding = (path: string) => ({
+    rule: 'structure.attribute-whitespace',
+    severity: 'warning' as const,
+    path,
+    message:
+      'Attribute value has surrounding whitespace that MyInvois may reject; it was checked as the trimmed value.',
+    docUrl: STRUCTURE,
+  });
+
+  it('warns on padded attributes with an @ path and ignores padded leaf text', () => {
+    const doc = invoice('1.0', '01', {
+      AccountingSupplierParty: [
+        {
+          Party: [
+            {
+              PartyIdentification: [{ ID: [{ _: '  C1234567890  ', schemeID: ' TIN' }] }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(check(doc)).toEqual([
+      whitespaceFinding('Invoice/AccountingSupplierParty/Party/PartyIdentification/ID@schemeID'),
+    ]);
+  });
+
+  it('warns on padded root namespace keys', () => {
+    const doc = invoice('1.0', '01');
+    doc._A = ` ${String(doc._A)} `;
+    expect(check(doc)).toEqual([whitespaceFinding('_A')]);
+  });
+
+  it('does not warn on number attributes or unpadded strings', () => {
+    expect(
+      check(
+        invoice('1.0', '01', {
+          LegalMonetaryTotal: [{ PayableAmount: [{ _: 106, currencyID: 458 }] }],
+        }),
+      ),
+    ).toEqual([]);
+    expect(check(invoice('1.0', '01'))).toEqual([]);
+  });
+
+  it('emits one warning per padded attribute', () => {
+    const findings = check(
+      invoice('1.0', '01', {
+        InvoiceLine: [
+          {
+            InvoicedQuantity: [{ _: 1, unitCode: ' C62' }],
+            Item: [
+              {
+                CommodityClassification: [
+                  { ItemClassificationCode: [{ _: '001', listID: 'CLASS ' }] },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(findings).toEqual([
+      whitespaceFinding('Invoice/InvoiceLine/InvoicedQuantity@unitCode'),
+      whitespaceFinding(
+        'Invoice/InvoiceLine/Item/CommodityClassification/ItemClassificationCode@listID',
+      ),
+    ]);
   });
 });
 

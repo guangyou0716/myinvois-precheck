@@ -106,6 +106,80 @@ describe('validateDocument', () => {
   });
 });
 
+function cloneValidInvoice(): Record<string, unknown> {
+  return structuredClone(loadFixtureJson('valid-invoice-1.1.json')) as Record<string, unknown>;
+}
+
+function walkRecords(node: unknown, visit: (record: Record<string, unknown>) => void): void {
+  if (Array.isArray(node)) {
+    for (const child of node) walkRecords(child, visit);
+    return;
+  }
+  if (typeof node !== 'object' || node === null) return;
+  const record = node as Record<string, unknown>;
+  visit(record);
+  for (const value of Object.values(record)) walkRecords(value, visit);
+}
+
+describe('padded attributes', () => {
+  it('treats schemeID " TIN" as TIN: bad TIN is reported and whitespace is warned', () => {
+    const doc = cloneValidInvoice();
+    walkRecords(doc, (record) => {
+      if (record.schemeID === 'TIN' && record._ === 'C1234567890') {
+        record.schemeID = ' TIN';
+        record._ = 'XX1234567890';
+      }
+    });
+    const result = validateDocument(doc);
+    const rules = result.findings.map((finding) => finding.rule);
+    expect(rules).toContain('parties.tin-format');
+    expect(rules).toContain('structure.attribute-whitespace');
+    expect(
+      result.findings.some(
+        (finding) =>
+          finding.rule === 'structure.attribute-whitespace' &&
+          finding.path ===
+            'Invoice/AccountingSupplierParty/Party/PartyIdentification/ID@schemeID',
+      ),
+    ).toBe(true);
+  });
+
+  it('treats listID "CLASS " as CLASS so an unknown classification is reported', () => {
+    const doc = cloneValidInvoice();
+    let mutated = false;
+    walkRecords(doc, (record) => {
+      if (!mutated && record.listID === 'CLASS' && record._ === '022') {
+        record.listID = 'CLASS ';
+        record._ = '999';
+        mutated = true;
+      }
+    });
+    const result = validateDocument(doc);
+    expect(result.findings.some((finding) => finding.rule === 'codes.classification')).toBe(true);
+    expect(result.findings.some((finding) => finding.rule === 'structure.attribute-whitespace')).toBe(
+      true,
+    );
+  });
+
+  it('treats currencyID " MYR" as MYR', () => {
+    const doc = cloneValidInvoice();
+    let mutated = false;
+    walkRecords(doc, (record) => {
+      if (!mutated && record.currencyID === 'MYR') {
+        record.currencyID = ' MYR';
+        mutated = true;
+      }
+    });
+    const result = validateDocument(doc);
+    expect(result.findings.some((finding) => finding.rule.startsWith('currency.'))).toBe(false);
+    expect(result.findings.some((finding) => finding.rule === 'codes.currency')).toBe(false);
+    expect(result.findings.some((finding) => finding.rule === 'structure.attribute-whitespace')).toBe(
+      true,
+    );
+    expect(result.ok).toBe(true);
+  });
+});
+
 describe('formatText', () => {
   const sample: ValidationResult = {
     ok: false,

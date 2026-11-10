@@ -48,7 +48,7 @@ export function attr(node: unknown, attrName: string, ...names: string[]): strin
   const target = first(node, ...names);
   if (!isRecord(target)) return undefined;
   const value = target[attrName];
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return value.trim();
   if (typeof value === 'number') return String(value);
   return undefined;
 }
