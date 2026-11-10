@@ -240,7 +240,11 @@ function checkAddress(findings: Finding[], party: unknown, basePath: string, sup
   if (zone !== undefined) {
     const country = text(address, 'Country', 'IdentificationCode');
     const mys = country === 'MYS';
-    const ok = mys ? /^\d{1,5}$/.test(zone) : zone.length <= 50;
+    const state = text(address, 'CountrySubentityCode');
+    // inv11.txt line 761: address line may be "NA"; other fields except state may be NA.
+    // inv11.txt line 801: consolidated submission uses State code 17 (Not Applicable).
+    const consolidatedNa = zone === 'NA' && state === '17';
+    const ok = consolidatedNa || (mys ? /^\d{1,5}$/.test(zone) : zone.length <= 50);
     if (!ok) {
       push(
         findings,

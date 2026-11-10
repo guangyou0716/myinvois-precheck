@@ -4,7 +4,13 @@ import { validateDocument } from '../src/validate.js';
 
 const fixturesDir = new URL('../fixtures/', import.meta.url);
 
-const VALID_FILES = new Set(['valid-invoice-1.1.json', 'valid-invoice-1.0.json']);
+const VALID_FILES = new Set([
+  'valid-invoice-1.1.json',
+  'valid-invoice-1.0.json',
+  'valid-foreign-currency-1.1.json',
+  'valid-consolidated-1.1.json',
+  'valid-exemption-1.1.json',
+]);
 
 const INVALID_RULE_PREFIX: Record<string, string> = {
   'invalid-missing-fields.json': 'required.',

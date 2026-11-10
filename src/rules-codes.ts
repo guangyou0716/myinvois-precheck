@@ -89,11 +89,19 @@ function walkCurrencyIds(node: unknown, path: string, findings: Finding[]): void
   }
 }
 
+function partyTin(party: unknown): string | undefined {
+  for (const ident of children(party, 'PartyIdentification')) {
+    if (attr(ident, 'schemeID', 'ID') === 'TIN') return text(ident, 'ID');
+  }
+  return undefined;
+}
+
 function checkState(
   findings: Finding[],
   state: string | undefined,
   country: string | undefined,
   path: string,
+  allowState17: boolean,
 ): void {
   if (state === undefined) return;
   if (country === 'MYS') {
@@ -102,14 +110,18 @@ function checkState(
       return;
     }
     if (state === '17') {
-      invalidCode(
-        findings,
-        'codes.state',
-        path,
-        'State Code 17 should be used for Consolidated e-Invoice and non-Malaysian address only',
-        'CV317',
-        'warning',
-      );
+      // inv11.txt line 801: consolidated submission uses State code 17 (Not Applicable).
+      // code.txt CV317: State Code 17 is for consolidated e-Invoice and non-Malaysian addresses only.
+      if (!allowState17) {
+        invalidCode(
+          findings,
+          'codes.state',
+          path,
+          'State Code 17 should be used for Consolidated e-Invoice and non-Malaysian address only',
+          'CV317',
+          'warning',
+        );
+      }
     }
     return;
   }
@@ -124,7 +136,12 @@ function checkState(
   }
 }
 
-function checkAddress(findings: Finding[], party: unknown, basePath: string): void {
+function checkAddress(
+  findings: Finding[],
+  party: unknown,
+  basePath: string,
+  allowState17 = false,
+): void {
   const address = first(party, 'PostalAddress');
   const country = text(address, 'Country', 'IdentificationCode');
   checkTable(
@@ -140,6 +157,7 @@ function checkAddress(findings: Finding[], party: unknown, basePath: string): vo
     text(address, 'CountrySubentityCode'),
     country,
     `${basePath}/PostalAddress/CountrySubentityCode`,
+    allowState17,
   );
 }
 
@@ -243,12 +261,11 @@ export function check(doc: unknown): Finding[] {
     'Invoice/AccountingSupplierParty/Party/IndustryClassificationCode',
     'IndustryClassificationCode',
   );
+  const buyer = first(invoice, 'AccountingCustomerParty', 'Party');
+  // taxpayer.txt ERR228 / inv11.txt line 801: general TIN 010 identifies a consolidated buyer.
+  const consolidatedBuyer = partyTin(buyer) === 'EI00000000010';
   checkAddress(findings, supplier, 'Invoice/AccountingSupplierParty/Party');
-  checkAddress(
-    findings,
-    first(invoice, 'AccountingCustomerParty', 'Party'),
-    'Invoice/AccountingCustomerParty/Party',
-  );
+  checkAddress(findings, buyer, 'Invoice/AccountingCustomerParty/Party', consolidatedBuyer);
 
   const deliveries = children(invoice, 'Delivery');
   for (let i = 0; i < deliveries.length; i++) {
