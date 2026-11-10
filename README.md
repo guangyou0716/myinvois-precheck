@@ -41,19 +41,19 @@ Each finding cites the matching LHDN SDK page: validator error pages under [docu
 |-------|-------------|------------|
 | structure | JSON root with a non-empty `Invoice` array; UBL markers `_D` / `_A` / `_B`; `InvoiceTypeCode` `01` / `02` / `03` / `04` / `11` / `12` / `13` / `14`; `listVersionID` `1.0` / `1.1` / `1.2` / `1.3`; `Signature` and `UBLExtensions` present on v1.1 and v1.3; warning on v1.2 / v1.3 (SVDP until 31 December 2027) | — |
 | required | Mandatory invoice, party, tax, monetary-total, and line fields; original e-Invoice reference (`UUID` and `ID`) on credit, debit, and refund notes (including self-billed `12` / `13` / `14`); `IssueDate` / `IssueTime` format; max lengths; amount values limited to 26 digits; tax exemption reason when tax type is `E` | CF378 |
-| parties | Supplier and buyer TIN length and FAQ format; NRIC / PASSPORT / ARMY / BRN length; SST and tourism tax (TTX) format; email and phone; address line, city, and postcode | CF345, CF346, CF400, CF401, CF404–CF412 |
+| parties | Supplier and buyer TIN length and FAQ format; NRIC / PASSPORT / ARMY / BRN length; SST and tourism tax (TTX) format; email and phone; address line, city, and postcode; General TIN / ID-type combinations (`parties.general-tin`). Foreign supplier for ERR213 and ERR220 is inferred from the supplier postal address country code not being `MYS` | CF345, CF346, CF400, CF401, CF404–CF412, ERR208, ERR211, ERR213, ERR217, ERR220, ERR222, ERR229, ERR236, ERR237, ERR255 |
 | codes | Invoice type, currency, country, state, tax type, MSIC, classification, unit, and payment method against LHDN code tables; Malaysian state codes on non-`MYS` addresses | CV302, CV316, CV317 |
 | currency | Amount `currencyID` vs document (and tax) currency; tax amounts must use `TaxCurrencyCode` when it is present; `TaxCurrencyCode` is document currency or `MYR`; `SourceCurrencyCode` matches document currency; exchange rate when document currency is not `MYR` | DC501, DC502, DC510, DC512 |
 | math | Line and invoice arithmetic against LHDN mathematical mappings (price × quantity, allowances/charges, tax sums, payable amount) | none published |
 
-Where LHDN publishes an error code, a finding includes it: CF345, CF346, CF378, CF400, CF401, CF404–CF412, CV302, CV316, CV317, DC501, DC502, DC510, DC512. Math rules have no published LHDN error code.
+Where LHDN publishes an error code, a finding includes it: CF345, CF346, CF378, CF400, CF401, CF404–CF412, CV302, CV316, CV317, DC501, DC502, DC510, DC512, ERR208, ERR211, ERR213, ERR217, ERR220, ERR222, ERR229, ERR236, ERR237, ERR255. Math rules have no published LHDN error code.
 
 TIN pattern check (`parties.tin-format`) is a **warning**, based on the [LHDN SDK FAQ](https://sdk.myinvois.hasil.gov.my/faq/): prefix `IG` for individuals; `C`, `CS`, `D`, `F`, `FA`, `PT`, `TA`, `TC`, `TN`, `TR`, `TP`, `J`, `LE` for non-individuals; no leading zero after the prefix; non-individual TINs end in `0`. General TINs `EI` + 11 digits are accepted.
 
 ## What it does NOT check
 
 - Digital signature validity (presence only, for v1.1 and v1.3)
-- Whether TIN / BRN / NRIC actually exist or match (Taxpayer Validator needs LHDN systems)
+- Whether TIN / BRN / NRIC actually exist or match in the tax registry (ERR206, ERR246, ERR401, ERR406 need LHDN systems)
 - Referenced documents
 - Duplicate detection
 - Issuance date/time window
@@ -67,9 +67,10 @@ TIN pattern check (`parties.tin-format`) is a **warning**, based on the [LHDN SD
 
 - Rounding tolerance for arithmetic is not documented by LHDN. This tool rounds to 2 decimals and uses tolerance `0.005`.
 - General TIN values (`EI` + 11 digits) come from the LHDN e-Invoice Specific Guideline rather than the SDK.
+- Foreign supplier for ERR213 and ERR220 is inferred from the supplier postal address country code not being `MYS`.
 - State code `17` on a Malaysian address is a warning unless the buyer TIN is the consolidated general TIN `EI00000000010`.
 - Official LHDN JSON samples use placeholder values (for example `"Supplier's TIN"`) and inconsistent amounts, so they fail this checker by design.
-- Project fixtures are synthetic: `valid-invoice-1.0.json`, `valid-invoice-1.1.json`, `valid-invoice-1.2.json`, `valid-invoice-1.3.json`, `valid-credit-note-1.1.json`, `valid-debit-note-1.1.json`, `valid-refund-note-1.1.json`, `valid-self-billed-invoice-1.1.json`, `valid-self-billed-credit-note-1.1.json`, `valid-foreign-currency-1.1.json`, `valid-consolidated-1.1.json`, `valid-exemption-1.1.json`, and `invalid-*.json`.
+- Project fixtures are synthetic: `valid-invoice-1.0.json`, `valid-invoice-1.1.json`, `valid-invoice-1.2.json`, `valid-invoice-1.3.json`, `valid-credit-note-1.1.json`, `valid-debit-note-1.1.json`, `valid-refund-note-1.1.json`, `valid-self-billed-invoice-1.1.json`, `valid-self-billed-credit-note-1.1.json`, `valid-foreign-supplier-self-billed-1.1.json`, `valid-foreign-currency-1.1.json`, `valid-consolidated-1.1.json`, `valid-exemption-1.1.json`, and `invalid-*.json`.
 
 ## Code tables
 

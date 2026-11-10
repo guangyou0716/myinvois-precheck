@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CORE_FIELDS, FAQ } from '../src/docs.js';
+import { CORE_FIELDS, FAQ, TAXPAYER } from '../src/docs.js';
 import { check } from '../src/rules-parties.js';
 import type { Finding } from '../src/types.js';
 
@@ -68,6 +68,40 @@ function setIdent(party: Record<string, unknown>, scheme: string, value: string)
     return;
   }
   idents.push(ident(scheme, value));
+}
+
+function removeIdent(party: Record<string, unknown>, scheme: string): void {
+  const idents = party.PartyIdentification as Array<{ ID: Array<Record<string, unknown>> }>;
+  party.PartyIdentification = idents.filter((item) => item.ID[0]?.schemeID !== scheme);
+}
+
+function setCountry(party: Record<string, unknown>, country: string, state = '17'): void {
+  const addr = (party.PostalAddress as Array<Record<string, unknown>>)[0];
+  addr.Country = [{ IdentificationCode: L(country) }];
+  addr.CountrySubentityCode = L(state);
+  if (country !== 'MYS') {
+    addr.PostalZone = L('10001');
+    addr.CityName = L('New York');
+  }
+}
+
+function invoiceLine(classCode = '004'): Record<string, unknown> {
+  return {
+    ID: L('1'),
+    Item: [
+      {
+        CommodityClassification: [{ ItemClassificationCode: [{ _: classCode, listID: 'CLASS' }] }],
+      },
+    ],
+  };
+}
+
+function setLines(invoice: Record<string, unknown>, classCodes: string[]): void {
+  invoice.InvoiceLine = classCodes.map((code, i) => {
+    const line = invoiceLine(code);
+    line.ID = L(String(i + 1));
+    return line;
+  });
 }
 
 function finding(
@@ -621,5 +655,432 @@ describe('parties.postcode', () => {
         { lhdnCode: 'CF405' },
       ),
     ]);
+  });
+});
+
+function gtFinding(
+  lhdnCode: string,
+  path: string,
+  message: string,
+  severity: 'error' | 'warning' = 'error',
+): Finding {
+  return finding('parties.general-tin', path, message, { severity, docUrl: TAXPAYER, lhdnCode });
+}
+
+const SUPPLIER_TIN = 'Invoice/AccountingSupplierParty/Party/PartyIdentification[TIN]';
+const BUYER_TIN = 'Invoice/AccountingCustomerParty/Party/PartyIdentification[TIN]';
+
+describe('parties.general-tin', () => {
+  describe('ERR208/ERR211', () => {
+    it('errors ERR208 when supplier TIN is 020 and the buyer is not consolidated', () => {
+      expect(
+        check(doc((inv) => setIdent(partyOf(inv, 'AccountingSupplierParty'), 'TIN', 'EI00000000020'))),
+      ).toEqual([
+        gtFinding('ERR208', SUPPLIER_TIN, 'ERR208: General TIN 020 is for buyers only.'),
+      ]);
+    });
+
+    it('errors ERR211 when supplier TIN is 020 on a consolidated invoice (buyer TIN 010)', () => {
+      expect(
+        check(
+          doc((inv) => {
+            setIdent(partyOf(inv, 'AccountingSupplierParty'), 'TIN', 'EI00000000020');
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000010');
+            removeIdent(buyer, 'NRIC');
+            setIdent(buyer, 'BRN', 'NA');
+            setLines(inv, ['004']);
+          }),
+        ),
+      ).toEqual([
+        gtFinding(
+          'ERR211',
+          SUPPLIER_TIN,
+          'ERR211: General TIN 020 is for buyers only and cannot be used on a consolidated invoice.',
+        ),
+      ]);
+    });
+
+    it('does not flag supplier TIN other than 020', () => {
+      expect(check(doc())).toEqual([]);
+      expect(
+        check(doc((inv) => setIdent(partyOf(inv, 'AccountingSupplierParty'), 'TIN', 'EI00000000030'))),
+      ).toEqual([]);
+    });
+  });
+
+  describe('ERR229', () => {
+    it('errors when buyer TIN is 030', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000030');
+            removeIdent(buyer, 'NRIC');
+            setIdent(buyer, 'PASSPORT', 'A12345678');
+          }),
+        ),
+      ).toEqual([
+        gtFinding('ERR229', BUYER_TIN, 'ERR229: General TIN 030 is for foreign suppliers only.'),
+      ]);
+    });
+
+    it('does not flag buyer TIN 020', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000020');
+            removeIdent(buyer, 'NRIC');
+            setIdent(buyer, 'BRN', 'NA');
+          }),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe('ERR222', () => {
+    it('errors when a General TIN other than 010 is combined with NRIC or ARMY', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000020');
+          }),
+        ),
+      ).toEqual([
+        gtFinding(
+          'ERR222',
+          BUYER_TIN,
+          'ERR222: Only General TIN 010 is allowed with NRIC or ARMY identification.',
+        ),
+      ]);
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000040');
+            removeIdent(buyer, 'NRIC');
+            setIdent(buyer, 'ARMY', '123456789012');
+            setIdent(buyer, 'BRN', 'NA');
+          }),
+        ),
+      ).toEqual([
+        gtFinding(
+          'ERR222',
+          BUYER_TIN,
+          'ERR222: Only General TIN 010 is allowed with NRIC or ARMY identification.',
+        ),
+      ]);
+    });
+
+    it('does not flag TIN 020 with NRIC value NA', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000020');
+            setIdent(buyer, 'NRIC', 'NA');
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it('does not flag General TIN 010 with NRIC, or another General TIN with BRN only', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000010');
+            setLines(inv, ['004']);
+          }),
+        ),
+      ).toEqual([]);
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000020');
+            removeIdent(buyer, 'NRIC');
+            setIdent(buyer, 'BRN', 'NA');
+          }),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe('ERR255', () => {
+    it('errors when TIN is 040 and BRN is an actual value', () => {
+      expect(
+        check(doc((inv) => setIdent(partyOf(inv, 'AccountingSupplierParty'), 'TIN', 'EI00000000040'))),
+      ).toEqual([
+        gtFinding('ERR255', SUPPLIER_TIN, 'ERR255: General TIN 040 requires BRN value NA.'),
+      ]);
+    });
+
+    it('does not flag TIN 040 when BRN is NA (any case) or missing', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const supplier = partyOf(inv, 'AccountingSupplierParty');
+            setIdent(supplier, 'TIN', 'EI00000000040');
+            setIdent(supplier, 'BRN', 'NA');
+          }),
+        ),
+      ).toEqual([]);
+      expect(
+        check(
+          doc((inv) => {
+            const supplier = partyOf(inv, 'AccountingSupplierParty');
+            setIdent(supplier, 'TIN', 'EI00000000040');
+            setIdent(supplier, 'BRN', 'na');
+          }),
+        ),
+      ).toEqual([]);
+      expect(
+        check(
+          doc((inv) => {
+            const supplier = partyOf(inv, 'AccountingSupplierParty');
+            setIdent(supplier, 'TIN', 'EI00000000040');
+            removeIdent(supplier, 'BRN');
+            setIdent(supplier, 'PASSPORT', 'A12345678');
+          }),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe('ERR237', () => {
+    it('errors when buyer TIN is 010 and BRN is an actual value', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000010');
+            removeIdent(buyer, 'NRIC');
+            setIdent(buyer, 'BRN', '201901234567');
+          }),
+        ),
+      ).toEqual([
+        gtFinding(
+          'ERR237',
+          BUYER_TIN,
+          'ERR237: Buyer TIN EI00000000010 cannot be used with an actual BRN.',
+        ),
+      ]);
+    });
+
+    it('does not flag buyer TIN 010 when BRN is NA or missing', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000010');
+            removeIdent(buyer, 'NRIC');
+            setIdent(buyer, 'BRN', 'NA');
+            setLines(inv, ['004']);
+          }),
+        ),
+      ).toEqual([]);
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000010');
+            setLines(inv, ['004']);
+          }),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe('ERR217', () => {
+    it('errors when supplier TIN is 010 and BRN is an actual value', () => {
+      expect(
+        check(
+          doc((inv) => {
+            setIdent(partyOf(inv, 'AccountingSupplierParty'), 'TIN', 'EI00000000010');
+            setLines(inv, ['004']);
+          }),
+        ),
+      ).toEqual([
+        gtFinding(
+          'ERR217',
+          SUPPLIER_TIN,
+          'ERR217: Supplier TIN EI00000000010 cannot be used with an actual BRN.',
+        ),
+      ]);
+    });
+
+    it('does not flag supplier TIN 010 when BRN is NA', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const supplier = partyOf(inv, 'AccountingSupplierParty');
+            setIdent(supplier, 'TIN', 'EI00000000010');
+            setIdent(supplier, 'BRN', 'NA');
+            setLines(inv, ['004']);
+          }),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe('ERR236', () => {
+    it('errors when TIN is 010, BRN or NRIC is NA, and a CLASS code is not 004', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000010');
+            removeIdent(buyer, 'NRIC');
+            setIdent(buyer, 'BRN', 'NA');
+            setLines(inv, ['022']);
+          }),
+        ),
+      ).toEqual([
+        gtFinding(
+          'ERR236',
+          BUYER_TIN,
+          'ERR236: General TIN 010 with BRN or NRIC value NA is only allowed when every CLASS classification code is 004.',
+        ),
+      ]);
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000010');
+            setIdent(buyer, 'NRIC', 'na');
+            setLines(inv, ['001', '004']);
+          }),
+        ),
+      ).toEqual([
+        gtFinding(
+          'ERR236',
+          BUYER_TIN,
+          'ERR236: General TIN 010 with BRN or NRIC value NA is only allowed when every CLASS classification code is 004.',
+        ),
+      ]);
+    });
+
+    it('does not flag TIN 010 with BRN NA when every CLASS code is 004', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            setIdent(buyer, 'TIN', 'EI00000000010');
+            removeIdent(buyer, 'NRIC');
+            setIdent(buyer, 'BRN', 'NA');
+            setLines(inv, ['004', '004']);
+          }),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe('ERR213', () => {
+    it('warns when supplier TIN is 010 and supplier country is not MYS', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const supplier = partyOf(inv, 'AccountingSupplierParty');
+            setIdent(supplier, 'TIN', 'EI00000000010');
+            setIdent(supplier, 'BRN', 'NA');
+            setCountry(supplier, 'USA');
+            setLines(inv, ['004']);
+          }),
+        ),
+      ).toEqual([
+        gtFinding(
+          'ERR213',
+          SUPPLIER_TIN,
+          'ERR213: General TIN 010 is not applicable for a foreign supplier (inferred from supplier postal address country code not being MYS).',
+          'warning',
+        ),
+      ]);
+    });
+
+    it('does not warn when supplier TIN is 010 and supplier country is MYS', () => {
+      expect(
+        check(
+          doc((inv) => {
+            const supplier = partyOf(inv, 'AccountingSupplierParty');
+            setIdent(supplier, 'TIN', 'EI00000000010');
+            setIdent(supplier, 'BRN', 'NA');
+            setLines(inv, ['004']);
+          }),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe('ERR220', () => {
+    it('warns on a self-billed document when supplier country is not MYS and supplier TIN is a General TIN other than 030', () => {
+      expect(
+        check(
+          doc((inv) => {
+            inv.InvoiceTypeCode = [{ _: '11', listVersionID: '1.1' }];
+            const supplier = partyOf(inv, 'AccountingSupplierParty');
+            setIdent(supplier, 'TIN', 'EI00000000040');
+            setIdent(supplier, 'BRN', 'NA');
+            setCountry(supplier, 'USA');
+          }),
+        ),
+      ).toEqual([
+        gtFinding(
+          'ERR220',
+          SUPPLIER_TIN,
+          'ERR220: Only General TIN 030 is allowed for a foreign supplier on a self-billed document (inferred from supplier postal address country code not being MYS).',
+          'warning',
+        ),
+      ]);
+    });
+
+    it('warns on a self-billed refund note (type 14) when supplier country is not MYS and supplier TIN is a General TIN other than 030', () => {
+      expect(
+        check(
+          doc((inv) => {
+            inv.InvoiceTypeCode = [{ _: '14', listVersionID: '1.1' }];
+            const supplier = partyOf(inv, 'AccountingSupplierParty');
+            setIdent(supplier, 'TIN', 'EI00000000040');
+            setIdent(supplier, 'BRN', 'NA');
+            setCountry(supplier, 'USA');
+          }),
+        ),
+      ).toEqual([
+        gtFinding(
+          'ERR220',
+          SUPPLIER_TIN,
+          'ERR220: Only General TIN 030 is allowed for a foreign supplier on a self-billed document (inferred from supplier postal address country code not being MYS).',
+          'warning',
+        ),
+      ]);
+    });
+
+    it('does not warn when a self-billed foreign supplier uses General TIN 030', () => {
+      expect(
+        check(
+          doc((inv) => {
+            inv.InvoiceTypeCode = [{ _: '11', listVersionID: '1.1' }];
+            const supplier = partyOf(inv, 'AccountingSupplierParty');
+            setIdent(supplier, 'TIN', 'EI00000000030');
+            setIdent(supplier, 'BRN', 'NA');
+            setCountry(supplier, 'USA');
+          }),
+        ),
+      ).toEqual([]);
+    });
+
+    it('does not warn when a self-billed foreign supplier uses a non-general TIN', () => {
+      expect(
+        check(
+          doc((inv) => {
+            inv.InvoiceTypeCode = [{ _: '11', listVersionID: '1.1' }];
+            const supplier = partyOf(inv, 'AccountingSupplierParty');
+            setCountry(supplier, 'USA');
+          }),
+        ),
+      ).toEqual([]);
+    });
   });
 });
