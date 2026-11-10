@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   CREDIT_V1_1,
+  CREDIT_V1_2,
   INVOICE_V1_0,
   INVOICE_V1_1,
+  INVOICE_V1_2,
+  INVOICE_V1_3,
   SELF_BILLED_INVOICE_V1_1,
   STRUCTURE,
 } from '../src/docs.js';
@@ -158,6 +161,24 @@ describe('structure.type-code', () => {
     },
   );
 
+  it.each(['01', '02', '03', '04', '11', '12', '13', '14'])(
+    'accepts InvoiceTypeCode %s on version 1.2',
+    (type) => {
+      expect(check(invoice('1.2', type)).map((finding) => finding.rule)).toEqual([
+        'structure.svdp-version',
+      ]);
+    },
+  );
+
+  it.each(['01', '02', '03', '04', '11', '12', '13', '14'])(
+    'accepts InvoiceTypeCode %s on version 1.3 with a signature',
+    (type) => {
+      expect(check(invoice('1.3', type, signature)).map((finding) => finding.rule)).toEqual([
+        'structure.svdp-version',
+      ]);
+    },
+  );
+
   it.each(['05', '99'])(
     'rejects InvoiceTypeCode %s and names the supported Invoice/Credit/Debit/Refund and self-billed types',
     (type) => {
@@ -216,44 +237,59 @@ describe('structure.version', () => {
         rule: 'structure.version',
         severity: 'error',
         path: 'Invoice/InvoiceTypeCode/listVersionID',
-        message:
-          'InvoiceTypeCode listVersionID is missing; versions 1.2/1.3 (SVDP) are not supported yet.',
+        message: 'InvoiceTypeCode listVersionID is missing.',
         docUrl: INVOICE_V1_1,
       },
     ]);
   });
 
-  it.each(['1.2', '1.3', '2.0'])('rejects listVersionID %s', (version) => {
+  it.each(['1.4', '2.0'])('rejects listVersionID %s', (version) => {
     const findings = check(invoice(version, '01'));
     expect(findings).toHaveLength(1);
     expect(findings[0]).toMatchObject({
       rule: 'structure.version',
       severity: 'error',
       path: 'Invoice/InvoiceTypeCode/listVersionID',
+      message: `InvoiceTypeCode listVersionID "${version}" is not supported.`,
       docUrl: INVOICE_V1_1,
     });
-    expect(findings[0]?.message).toContain('versions 1.2/1.3 (SVDP) are not supported yet');
     expect(findings.map((finding) => finding.rule)).not.toContain('structure.signature');
+    expect(findings.map((finding) => finding.rule)).not.toContain('structure.svdp-version');
   });
 
-  it('accepts versions 1.0 and 1.1', () => {
+  it('accepts versions 1.0, 1.1, 1.2, and 1.3', () => {
     expect(check(invoice('1.0', '01'))).toEqual([]);
     expect(check(invoice('1.1', '01', signature))).toEqual([]);
+    expect(check(invoice('1.2', '01')).map((finding) => finding.rule)).toEqual([
+      'structure.svdp-version',
+    ]);
+    expect(check(invoice('1.3', '01', signature)).map((finding) => finding.rule)).toEqual([
+      'structure.svdp-version',
+    ]);
   });
 
-  it('trims listVersionID before comparing with 1.0 and 1.1', () => {
+  it('trims listVersionID before comparing with 1.0, 1.1, 1.2, and 1.3', () => {
     expect(check(invoice('  1.0  ', '01'))).toEqual([]);
     expect(check(invoice(' 1.1 ', '01', signature))).toEqual([]);
     expect(check(invoice(' 1.1 ', '01')).map((finding) => finding.rule)).toEqual([
       'structure.signature',
       'structure.signature',
     ]);
+    expect(check(invoice('  1.2  ', '01')).map((finding) => finding.rule)).toEqual([
+      'structure.svdp-version',
+    ]);
+    expect(check(invoice(' 1.3 ', '01', signature)).map((finding) => finding.rule)).toEqual([
+      'structure.svdp-version',
+    ]);
   });
 });
 
 describe('structure.signature', () => {
-  it('requires Signature and UBLExtensions on version 1.1 only', () => {
+  it('requires Signature and UBLExtensions on versions 1.1 and 1.3', () => {
     expect(check(invoice('1.0', '01'))).toEqual([]);
+    expect(check(invoice('1.2', '01')).map((finding) => finding.rule)).toEqual([
+      'structure.svdp-version',
+    ]);
 
     const missingBoth = check(invoice('1.1', '01'));
     expect(missingBoth).toEqual([
@@ -271,6 +307,33 @@ describe('structure.signature', () => {
         message:
           "UBLExtensions is missing. Version 1.1 Issuer's Digital Signature is Mandatory [1-1].",
         docUrl: INVOICE_V1_1,
+      },
+    ]);
+
+    const missingBoth13 = check(invoice('1.3', '01'));
+    expect(missingBoth13).toEqual([
+      {
+        rule: 'structure.signature',
+        severity: 'error',
+        path: 'Invoice/Signature',
+        message: "Signature is missing. Version 1.3 Issuer's Digital Signature is Mandatory [1-1].",
+        docUrl: INVOICE_V1_3,
+      },
+      {
+        rule: 'structure.signature',
+        severity: 'error',
+        path: 'Invoice/UBLExtensions',
+        message:
+          "UBLExtensions is missing. Version 1.3 Issuer's Digital Signature is Mandatory [1-1].",
+        docUrl: INVOICE_V1_3,
+      },
+      {
+        rule: 'structure.svdp-version',
+        severity: 'warning',
+        path: 'Invoice/InvoiceTypeCode/listVersionID',
+        message:
+          'Document version 1.3 is only for the e-Invoice Voluntary Disclosure (VD) Programme (SVDP) until 31 December 2027. Normal submissions should use 1.0 or 1.1.',
+        docUrl: INVOICE_V1_3,
       },
     ]);
   });
@@ -306,6 +369,20 @@ describe('structure.signature', () => {
     ]);
     expect(findings[0]?.docUrl).toBe(INVOICE_V1_1);
   });
+
+  it('still checks the signature when the type code value is absent but the version is 1.3', () => {
+    const findings = check({
+      ...namespaces,
+      Invoice: [{ InvoiceTypeCode: [{ listVersionID: '1.3' }] }],
+    });
+    expect(findings.map((finding) => finding.rule)).toEqual([
+      'structure.type-code',
+      'structure.signature',
+      'structure.signature',
+      'structure.svdp-version',
+    ]);
+    expect(findings[0]?.docUrl).toBe(INVOICE_V1_3);
+  });
 });
 
 describe('clean invoice', () => {
@@ -317,9 +394,61 @@ describe('clean invoice', () => {
     expect(check(invoice('1.1', '01', signature))).toEqual([]);
   });
 
+  it('returns only the SVDP warning for a version 1.2 invoice without a signature', () => {
+    expect(check(invoice('1.2', '01')).map((finding) => finding.rule)).toEqual([
+      'structure.svdp-version',
+    ]);
+  });
+
+  it('returns only the SVDP warning for a version 1.3 invoice that carries signature placeholders', () => {
+    expect(check(invoice('1.3', '01', signature)).map((finding) => finding.rule)).toEqual([
+      'structure.svdp-version',
+    ]);
+  });
+
   it('omits lhdnCode on structure findings', () => {
     for (const finding of check(invoice('1.1', '03'))) {
       expect(finding.lhdnCode).toBeUndefined();
     }
+  });
+});
+
+describe('structure.svdp-version', () => {
+  it('warns on versions 1.2 and 1.3 and not on 1.0 or 1.1', () => {
+    expect(check(invoice('1.0', '01')).map((finding) => finding.rule)).not.toContain(
+      'structure.svdp-version',
+    );
+    expect(check(invoice('1.1', '01', signature)).map((finding) => finding.rule)).not.toContain(
+      'structure.svdp-version',
+    );
+
+    const v12 = check(invoice('1.2', '01'));
+    expect(v12).toEqual([
+      {
+        rule: 'structure.svdp-version',
+        severity: 'warning',
+        path: 'Invoice/InvoiceTypeCode/listVersionID',
+        message:
+          'Document version 1.2 is only for the e-Invoice Voluntary Disclosure (VD) Programme (SVDP) until 31 December 2027. Normal submissions should use 1.0 or 1.1.',
+        docUrl: INVOICE_V1_2,
+      },
+    ]);
+
+    const v13 = check(invoice('1.3', '01', signature));
+    expect(v13).toEqual([
+      {
+        rule: 'structure.svdp-version',
+        severity: 'warning',
+        path: 'Invoice/InvoiceTypeCode/listVersionID',
+        message:
+          'Document version 1.3 is only for the e-Invoice Voluntary Disclosure (VD) Programme (SVDP) until 31 December 2027. Normal submissions should use 1.0 or 1.1.',
+        docUrl: INVOICE_V1_3,
+      },
+    ]);
+  });
+
+  it('cites the version-specific data-structure page', () => {
+    expect(check(invoice('1.2', '02'))[0]?.docUrl).toBe(CREDIT_V1_2);
+    expect(check(invoice('1.3', '01', signature))[0]?.docUrl).toBe(INVOICE_V1_3);
   });
 });

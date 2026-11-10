@@ -4,9 +4,14 @@ import { attr, children, first, text } from './ubl.js';
 
 const INVOICE_URN = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2';
 
-const SVDP_LIMIT = 'versions 1.2/1.3 (SVDP) are not supported yet';
-
 const SUPPORTED_TYPES = new Set(['01', '02', '03', '04', '11', '12', '13', '14']);
+
+const SUPPORTED_VERSIONS = new Set(['1.0', '1.1', '1.2', '1.3']);
+
+/** v1.3 is maintained as v1.1 (digital signature); v1.2 is maintained as v1.0 (none). */
+const SIGNATURE_REQUIRED_VERSIONS = new Set(['1.1', '1.3']);
+
+const SVDP_VERSIONS = new Set(['1.2', '1.3']);
 
 const SUPPORTED_TYPE_LIST =
   'Invoice (01), Credit Note (02), Debit Note (03), Refund Note (04), Self-billed Invoice (11), Self-billed Credit Note (12), Self-billed Debit Note (13), and Self-billed Refund Note (14)';
@@ -90,7 +95,7 @@ export function check(doc: unknown): Finding[] {
     });
   }
 
-  if (listVersionID !== '1.0' && listVersionID !== '1.1') {
+  if (listVersionID === undefined || !SUPPORTED_VERSIONS.has(listVersionID)) {
     const detail =
       listVersionID === undefined
         ? 'InvoiceTypeCode listVersionID is missing'
@@ -99,19 +104,19 @@ export function check(doc: unknown): Finding[] {
       rule: 'structure.version',
       severity: 'error',
       path: 'Invoice/InvoiceTypeCode/listVersionID',
-      message: `${detail}; ${SVDP_LIMIT}.`,
+      message: `${detail}.`,
       docUrl,
     });
   }
 
-  // Presence only. v1.1 makes Issuer's Digital Signature mandatory; it is not verified.
-  if (listVersionID === '1.1') {
+  // Presence only. v1.1 and v1.3 make Issuer's Digital Signature mandatory; it is not verified.
+  if (listVersionID !== undefined && SIGNATURE_REQUIRED_VERSIONS.has(listVersionID)) {
     if (children(invoice, 'Signature').length === 0) {
       findings.push({
         rule: 'structure.signature',
         severity: 'error',
         path: 'Invoice/Signature',
-        message: "Signature is missing. Version 1.1 Issuer's Digital Signature is Mandatory [1-1].",
+        message: `Signature is missing. Version ${listVersionID} Issuer's Digital Signature is Mandatory [1-1].`,
         docUrl,
       });
     }
@@ -120,11 +125,20 @@ export function check(doc: unknown): Finding[] {
         rule: 'structure.signature',
         severity: 'error',
         path: 'Invoice/UBLExtensions',
-        message:
-          "UBLExtensions is missing. Version 1.1 Issuer's Digital Signature is Mandatory [1-1].",
+        message: `UBLExtensions is missing. Version ${listVersionID} Issuer's Digital Signature is Mandatory [1-1].`,
         docUrl,
       });
     }
+  }
+
+  if (listVersionID !== undefined && SVDP_VERSIONS.has(listVersionID)) {
+    findings.push({
+      rule: 'structure.svdp-version',
+      severity: 'warning',
+      path: 'Invoice/InvoiceTypeCode/listVersionID',
+      message: `Document version ${listVersionID} is only for the e-Invoice Voluntary Disclosure (VD) Programme (SVDP) until 31 December 2027. Normal submissions should use 1.0 or 1.1.`,
+      docUrl,
+    });
   }
 
   return findings;
