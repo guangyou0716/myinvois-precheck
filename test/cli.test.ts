@@ -132,6 +132,19 @@ describe('run', () => {
     );
   });
 
+  it('always includes version in --json output (null when unparseable, "1.1" for a valid 1.1 fixture)', () => {
+    const bad = fakeIo({ 'bad.json': '{bad' });
+    expect(run(['--json', 'bad.json'], bad)).toBe(1);
+    const badParsed: unknown = JSON.parse(bad.out);
+    expect(badParsed).toMatchObject({ file: 'bad.json', ok: false, version: null });
+    expect((badParsed as { version: unknown }).version).toBeNull();
+
+    const good = fakeIo({ 'valid.json': VALID_1_1 });
+    expect(run(['--json', 'valid.json'], good)).toBe(0);
+    const goodParsed: unknown = JSON.parse(good.out);
+    expect(goodParsed).toMatchObject({ file: 'valid.json', ok: true, version: '1.1' });
+  });
+
   it('prints a JSON array for --json with multiple files', () => {
     const io = fakeIo({
       'a.json': MINIMAL_INVOICE,

@@ -40,7 +40,7 @@ export function formatJson(result: ValidationResult, fileName: string): string {
     {
       file: fileName,
       ok: result.ok,
-      version: result.version,
+      version: result.version ?? null,
       errorCount,
       warningCount,
       findings: result.findings,
