@@ -112,6 +112,21 @@ describe('documentUrl', () => {
     expect(documentUrl(type, undefined)).toBe(page);
   });
 
+  it('trims a padded type code before selecting the page', () => {
+    expect(documentUrl(' 02 ', '1.0')).toBe(CREDIT_V1_0);
+    expect(documentUrl(' 02 ', '1.1')).toBe(CREDIT_V1_1);
+    expect(documentUrl(' 02 ', '1.2')).toBe(CREDIT_V1_2);
+    expect(documentUrl(' 02 ', '1.3')).toBe(CREDIT_V1_3);
+  });
+
+  it.each([
+    [' 1.0 ', INVOICE_V1_0],
+    [' 1.2 ', INVOICE_V1_2],
+    ['1.3 ', INVOICE_V1_3],
+  ] as const)('trims padded version %j to the matching data-structure page', (version, page) => {
+    expect(documentUrl('01', version)).toBe(page);
+  });
+
   it('cites debit-v1-1 and refund-v1-1 on type 03 and 04 findings', () => {
     const debit = check(typedInvoice('03', '1.1'));
     expect(debit[0]).toMatchObject({
