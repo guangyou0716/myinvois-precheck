@@ -1,0 +1,33 @@
+{
+  "name": "myinvois-precheck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "myinvois-precheck": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "data"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check": "npm run lint && npm run typecheck && npm test",
+    "fetch-codes": "node scripts/fetch-codes.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9",
+    "@types/node": "^20",
+    "eslint": "^9",
+    "globals": "^16",
+    "typescript": "^5",
+    "typescript-eslint": "^8",
+    "vitest": "^3"
+  }
+}
