@@ -2,20 +2,36 @@ import { describe, expect, it } from 'vitest';
 import {
   CREDIT_V1_0,
   CREDIT_V1_1,
+  CREDIT_V1_2,
+  CREDIT_V1_3,
   DEBIT_V1_0,
   DEBIT_V1_1,
+  DEBIT_V1_2,
+  DEBIT_V1_3,
   INVOICE_V1_0,
   INVOICE_V1_1,
+  INVOICE_V1_2,
+  INVOICE_V1_3,
   REFUND_V1_0,
   REFUND_V1_1,
+  REFUND_V1_2,
+  REFUND_V1_3,
   SELF_BILLED_CREDIT_V1_0,
   SELF_BILLED_CREDIT_V1_1,
+  SELF_BILLED_CREDIT_V1_2,
+  SELF_BILLED_CREDIT_V1_3,
   SELF_BILLED_DEBIT_V1_0,
   SELF_BILLED_DEBIT_V1_1,
+  SELF_BILLED_DEBIT_V1_2,
+  SELF_BILLED_DEBIT_V1_3,
   SELF_BILLED_INVOICE_V1_0,
   SELF_BILLED_INVOICE_V1_1,
+  SELF_BILLED_INVOICE_V1_2,
+  SELF_BILLED_INVOICE_V1_3,
   SELF_BILLED_REFUND_V1_0,
   SELF_BILLED_REFUND_V1_1,
+  SELF_BILLED_REFUND_V1_2,
+  SELF_BILLED_REFUND_V1_3,
   documentUrl,
 } from '../src/docs.js';
 import { check } from '../src/rules-structure.js';
@@ -37,20 +53,36 @@ describe('documentUrl', () => {
   it.each([
     ['01', '1.0', INVOICE_V1_0],
     ['01', '1.1', INVOICE_V1_1],
+    ['01', '1.2', INVOICE_V1_2],
+    ['01', '1.3', INVOICE_V1_3],
     ['02', '1.0', CREDIT_V1_0],
     ['02', '1.1', CREDIT_V1_1],
+    ['02', '1.2', CREDIT_V1_2],
+    ['02', '1.3', CREDIT_V1_3],
     ['03', '1.0', DEBIT_V1_0],
     ['03', '1.1', DEBIT_V1_1],
+    ['03', '1.2', DEBIT_V1_2],
+    ['03', '1.3', DEBIT_V1_3],
     ['04', '1.0', REFUND_V1_0],
     ['04', '1.1', REFUND_V1_1],
+    ['04', '1.2', REFUND_V1_2],
+    ['04', '1.3', REFUND_V1_3],
     ['11', '1.0', SELF_BILLED_INVOICE_V1_0],
     ['11', '1.1', SELF_BILLED_INVOICE_V1_1],
+    ['11', '1.2', SELF_BILLED_INVOICE_V1_2],
+    ['11', '1.3', SELF_BILLED_INVOICE_V1_3],
     ['12', '1.0', SELF_BILLED_CREDIT_V1_0],
     ['12', '1.1', SELF_BILLED_CREDIT_V1_1],
+    ['12', '1.2', SELF_BILLED_CREDIT_V1_2],
+    ['12', '1.3', SELF_BILLED_CREDIT_V1_3],
     ['13', '1.0', SELF_BILLED_DEBIT_V1_0],
     ['13', '1.1', SELF_BILLED_DEBIT_V1_1],
+    ['13', '1.2', SELF_BILLED_DEBIT_V1_2],
+    ['13', '1.3', SELF_BILLED_DEBIT_V1_3],
     ['14', '1.0', SELF_BILLED_REFUND_V1_0],
     ['14', '1.1', SELF_BILLED_REFUND_V1_1],
+    ['14', '1.2', SELF_BILLED_REFUND_V1_2],
+    ['14', '1.3', SELF_BILLED_REFUND_V1_3],
   ] as const)('type %s version %s returns the matching data-structure page', (type, version, page) => {
     expect(documentUrl(type, version)).toBe(page);
   });
@@ -60,6 +92,8 @@ describe('documentUrl', () => {
     (type) => {
       expect(documentUrl(type, '1.0')).toBe(INVOICE_V1_0);
       expect(documentUrl(type, '1.1')).toBe(INVOICE_V1_1);
+      expect(documentUrl(type, '1.2')).toBe(INVOICE_V1_2);
+      expect(documentUrl(type, '1.3')).toBe(INVOICE_V1_3);
     },
   );
 
@@ -73,7 +107,8 @@ describe('documentUrl', () => {
     ['13', SELF_BILLED_DEBIT_V1_1],
     ['14', SELF_BILLED_REFUND_V1_1],
   ] as const)('unknown version for type %s cites the v1.1 page', (type, page) => {
-    expect(documentUrl(type, '1.2')).toBe(page);
+    expect(documentUrl(type, '1.4')).toBe(page);
+    expect(documentUrl(type, '2.0')).toBe(page);
     expect(documentUrl(type, undefined)).toBe(page);
   });
 

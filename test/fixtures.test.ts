@@ -17,6 +17,8 @@ const VALID_FILES = new Set([
   'valid-exemption-1.1.json',
 ]);
 
+const SVDP_FILES = new Set(['valid-invoice-1.2.json', 'valid-invoice-1.3.json']);
+
 const INVALID_RULE_PREFIX: Record<string, string> = {
   'invalid-missing-fields.json': 'required.',
   'invalid-codes.json': 'codes.',
@@ -43,10 +45,14 @@ describe('fixtures', () => {
 
   it('loads every file in fixtures/', () => {
     expect(files.length).toBeGreaterThan(0);
-    expect(files).toEqual(expect.arrayContaining([...VALID_FILES, ...Object.keys(INVALID_RULE_PREFIX)]));
+    expect(files).toEqual(
+      expect.arrayContaining([...VALID_FILES, ...SVDP_FILES, ...Object.keys(INVALID_RULE_PREFIX)]),
+    );
   });
 
   for (const file of files) {
+    if (SVDP_FILES.has(file)) continue;
+
     it(file, () => {
       const result = validateDocument(loadFixture(file));
       const errors = result.findings.filter((finding) => finding.severity === 'error');
@@ -68,4 +74,18 @@ describe('fixtures', () => {
       }
     });
   }
+
+  it.each([...SVDP_FILES])('%s has 0 errors and exactly 1 structure.svdp-version warning', (file) => {
+    const result = validateDocument(loadFixture(file));
+    const findingsMsg = JSON.stringify(result.findings, null, 2);
+    const errors = result.findings.filter((finding) => finding.severity === 'error');
+    const warnings = result.findings.filter((finding) => finding.severity === 'warning');
+    expect(result.ok, findingsMsg).toBe(true);
+    expect(errors, findingsMsg).toHaveLength(0);
+    expect(warnings, findingsMsg).toHaveLength(1);
+    expect(warnings[0]).toMatchObject({
+      rule: 'structure.svdp-version',
+      severity: 'warning',
+    });
+  });
 });

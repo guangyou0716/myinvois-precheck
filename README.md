@@ -1,6 +1,6 @@
 # myinvois-precheck
 
-myinvois-precheck is a free, offline, stateless pre-submission checker (CLI and TypeScript library) for Malaysia MyInvois e-Invoices in LHDN’s UBL 2.1 JSON format. It covers Invoice (`01`), Credit Note (`02`), Debit Note (`03`), Refund Note (`04`), Self-billed Invoice (`11`), Self-billed Credit Note (`12`), Self-billed Debit Note (`13`), and Self-billed Refund Note (`14`) for document versions `1.0` and `1.1`. It makes no network calls, uses no credentials, and never submits a document.
+myinvois-precheck is a free, offline, stateless pre-submission checker (CLI and TypeScript library) for Malaysia MyInvois e-Invoices in LHDN’s UBL 2.1 JSON format. It covers Invoice (`01`), Credit Note (`02`), Debit Note (`03`), Refund Note (`04`), Self-billed Invoice (`11`), Self-billed Credit Note (`12`), Self-billed Debit Note (`13`), and Self-billed Refund Note (`14`) for document versions `1.0`, `1.1`, `1.2`, and `1.3`. Versions `1.2` and `1.3` are SVDP (e-Invoice Voluntary Disclosure Programme) variants of `1.0` and `1.1`. It makes no network calls, uses no credentials, and never submits a document.
 
 **This project is not affiliated with, endorsed by, or connected to Lembaga Hasil Dalam Negeri Malaysia (LHDN/HASiL). Passing this check does not guarantee that MyInvois will accept the document. The official MyInvois validators are authoritative.**
 
@@ -35,11 +35,11 @@ import { validateJson } from './dist/index.js';
 
 ## What it checks
 
-Each finding cites the matching LHDN SDK page: validator error pages under [document validation rules](https://sdk.myinvois.hasil.gov.my/documentvalidationrules/), the [Invoice](https://sdk.myinvois.hasil.gov.my/documents/invoice-v1-1/), [Credit Note](https://sdk.myinvois.hasil.gov.my/documents/credit-v1-1/), [Debit Note](https://sdk.myinvois.hasil.gov.my/documents/debit-v1-1/), [Refund Note](https://sdk.myinvois.hasil.gov.my/documents/refund-v1-1/), [Self-billed Invoice](https://sdk.myinvois.hasil.gov.my/documents/self-billed-invoice-v1-1/), [Self-billed Credit Note](https://sdk.myinvois.hasil.gov.my/documents/self-billed-credit-v1-1/), [Self-billed Debit Note](https://sdk.myinvois.hasil.gov.my/documents/self-billed-debit-v1-1/), or [Self-billed Refund Note](https://sdk.myinvois.hasil.gov.my/documents/self-billed-refund-v1-1/) v1.0 / v1.1 data-structure pages, or the [mathematical mappings](https://sdk.myinvois.hasil.gov.my/mathematical-mappings/) page.
+Each finding cites the matching LHDN SDK page: validator error pages under [document validation rules](https://sdk.myinvois.hasil.gov.my/documentvalidationrules/), the [Invoice](https://sdk.myinvois.hasil.gov.my/documents/invoice-v1-1/), [Credit Note](https://sdk.myinvois.hasil.gov.my/documents/credit-v1-1/), [Debit Note](https://sdk.myinvois.hasil.gov.my/documents/debit-v1-1/), [Refund Note](https://sdk.myinvois.hasil.gov.my/documents/refund-v1-1/), [Self-billed Invoice](https://sdk.myinvois.hasil.gov.my/documents/self-billed-invoice-v1-1/), [Self-billed Credit Note](https://sdk.myinvois.hasil.gov.my/documents/self-billed-credit-v1-1/), [Self-billed Debit Note](https://sdk.myinvois.hasil.gov.my/documents/self-billed-debit-v1-1/), or [Self-billed Refund Note](https://sdk.myinvois.hasil.gov.my/documents/self-billed-refund-v1-1/) v1.0 / v1.1 / v1.2 / v1.3 data-structure pages, or the [mathematical mappings](https://sdk.myinvois.hasil.gov.my/mathematical-mappings/) page.
 
 | Group | Description | LHDN codes |
 |-------|-------------|------------|
-| structure | JSON root with a non-empty `Invoice` array; UBL markers `_D` / `_A` / `_B`; `InvoiceTypeCode` `01` / `02` / `03` / `04` / `11` / `12` / `13` / `14`; `listVersionID` `1.0` or `1.1`; `Signature` and `UBLExtensions` present on v1.1 | — |
+| structure | JSON root with a non-empty `Invoice` array; UBL markers `_D` / `_A` / `_B`; `InvoiceTypeCode` `01` / `02` / `03` / `04` / `11` / `12` / `13` / `14`; `listVersionID` `1.0` / `1.1` / `1.2` / `1.3`; `Signature` and `UBLExtensions` present on v1.1 and v1.3; warning on v1.2 / v1.3 (SVDP until 31 December 2027) | — |
 | required | Mandatory invoice, party, tax, monetary-total, and line fields; original e-Invoice reference (`UUID` and `ID`) on credit, debit, and refund notes (including self-billed `12` / `13` / `14`); `IssueDate` / `IssueTime` format; max lengths; amount values limited to 26 digits; tax exemption reason when tax type is `E` | CF378 |
 | parties | Supplier and buyer TIN length and FAQ format; NRIC / PASSPORT / ARMY / BRN length; SST and tourism tax (TTX) format; email and phone; address line, city, and postcode | CF345, CF346, CF400, CF401, CF404–CF412 |
 | codes | Invoice type, currency, country, state, tax type, MSIC, classification, unit, and payment method against LHDN code tables; Malaysian state codes on non-`MYS` addresses | CV302, CV316, CV317 |
@@ -52,12 +52,11 @@ TIN pattern check (`parties.tin-format`) is a **warning**, based on the [LHDN SD
 
 ## What it does NOT check
 
-- Digital signature validity (presence only, for v1.1)
+- Digital signature validity (presence only, for v1.1 and v1.3)
 - Whether TIN / BRN / NRIC actually exist or match (Taxpayer Validator needs LHDN systems)
 - Referenced documents
 - Duplicate detection
 - Issuance date/time window
-- Versions 1.2 / 1.3 (SVDP)
 - XML documents (planned)
 - Document size limit
 - Tax rate × taxable amount
@@ -70,7 +69,7 @@ TIN pattern check (`parties.tin-format`) is a **warning**, based on the [LHDN SD
 - General TIN values (`EI` + 11 digits) come from the LHDN e-Invoice Specific Guideline rather than the SDK.
 - State code `17` on a Malaysian address is a warning unless the buyer TIN is the consolidated general TIN `EI00000000010`.
 - Official LHDN JSON samples use placeholder values (for example `"Supplier's TIN"`) and inconsistent amounts, so they fail this checker by design.
-- Project fixtures are synthetic: `valid-invoice-1.0.json`, `valid-invoice-1.1.json`, `valid-credit-note-1.1.json`, `valid-debit-note-1.1.json`, `valid-refund-note-1.1.json`, `valid-self-billed-invoice-1.1.json`, `valid-self-billed-credit-note-1.1.json`, `valid-foreign-currency-1.1.json`, `valid-consolidated-1.1.json`, `valid-exemption-1.1.json`, and `invalid-*.json`.
+- Project fixtures are synthetic: `valid-invoice-1.0.json`, `valid-invoice-1.1.json`, `valid-invoice-1.2.json`, `valid-invoice-1.3.json`, `valid-credit-note-1.1.json`, `valid-debit-note-1.1.json`, `valid-refund-note-1.1.json`, `valid-self-billed-invoice-1.1.json`, `valid-self-billed-credit-note-1.1.json`, `valid-foreign-currency-1.1.json`, `valid-consolidated-1.1.json`, `valid-exemption-1.1.json`, and `invalid-*.json`.
 
 ## Code tables
 
