@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INVOICE_V1_0, INVOICE_V1_1, STRUCTURE } from '../src/docs.js';
+import { CREDIT_V1_1, INVOICE_V1_0, INVOICE_V1_1, STRUCTURE } from '../src/docs.js';
 import { check } from '../src/rules-structure.js';
 
 const URN = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2';
@@ -138,32 +138,52 @@ describe('structure.type-code', () => {
     ]);
   });
 
-  it('errors when the type is not Invoice 01 and cites the version page', () => {
-    const v10 = check(invoice('1.0', '02'));
-    expect(v10).toEqual([
-      {
-        rule: 'structure.type-code',
-        severity: 'error',
-        path: 'Invoice/InvoiceTypeCode',
-        message: 'InvoiceTypeCode "02" is not an Invoice (01); other types are not supported yet.',
-        docUrl: INVOICE_V1_0,
-      },
-    ]);
+  it.each(['01', '02', '03', '04'])('accepts InvoiceTypeCode %s on version 1.0', (type) => {
+    expect(check(invoice('1.0', type))).toEqual([]);
+  });
 
-    const v11 = check(invoice('1.1', '02', signature));
-    expect(v11).toEqual([
-      {
-        rule: 'structure.type-code',
-        severity: 'error',
-        path: 'Invoice/InvoiceTypeCode',
-        message: 'InvoiceTypeCode "02" is not an Invoice (01); other types are not supported yet.',
-        docUrl: INVOICE_V1_1,
-      },
-    ]);
+  it.each(['02', '03', '04'])('accepts InvoiceTypeCode %s on version 1.1 with a signature', (type) => {
+    expect(check(invoice('1.1', type, signature))).toEqual([]);
+  });
+
+  it.each(['11', '99'])(
+    'rejects InvoiceTypeCode %s and names the supported Invoice/Credit/Debit/Refund Note types',
+    (type) => {
+      const v10 = check(invoice('1.0', type));
+      expect(v10).toEqual([
+        {
+          rule: 'structure.type-code',
+          severity: 'error',
+          path: 'Invoice/InvoiceTypeCode',
+          message: `InvoiceTypeCode "${type}" is not supported; only Invoice (01), Credit Note (02), Debit Note (03), and Refund Note (04) are supported (self-billed types 11-14 not yet).`,
+          docUrl: INVOICE_V1_0,
+        },
+      ]);
+
+      const v11 = check(invoice('1.1', type, signature));
+      expect(v11).toEqual([
+        {
+          rule: 'structure.type-code',
+          severity: 'error',
+          path: 'Invoice/InvoiceTypeCode',
+          message: `InvoiceTypeCode "${type}" is not supported; only Invoice (01), Credit Note (02), Debit Note (03), and Refund Note (04) are supported (self-billed types 11-14 not yet).`,
+          docUrl: INVOICE_V1_1,
+        },
+      ]);
+    },
+  );
+
+  it('cites the credit-note page for a type 02 version 1.1 finding', () => {
+    const findings = check(invoice('1.1', '02'));
+    expect(findings[0]).toMatchObject({
+      rule: 'structure.signature',
+      docUrl: CREDIT_V1_1,
+    });
   });
 
   it('trims the type code the way JSON-UBL text leaves do', () => {
     expect(check(invoice('1.0', '  01  '))).toEqual([]);
+    expect(check(invoice('1.0', '  02  '))).toEqual([]);
   });
 });
 

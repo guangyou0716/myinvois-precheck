@@ -7,6 +7,9 @@ const fixturesDir = new URL('../fixtures/', import.meta.url);
 const VALID_FILES = new Set([
   'valid-invoice-1.1.json',
   'valid-invoice-1.0.json',
+  'valid-credit-note-1.1.json',
+  'valid-debit-note-1.1.json',
+  'valid-refund-note-1.1.json',
   'valid-foreign-currency-1.1.json',
   'valid-consolidated-1.1.json',
   'valid-exemption-1.1.json',
@@ -48,8 +51,10 @@ describe('fixtures', () => {
       const findingsMsg = JSON.stringify(result.findings, null, 2);
 
       if (VALID_FILES.has(file)) {
+        const warnings = result.findings.filter((finding) => finding.severity === 'warning');
         expect(result.ok, findingsMsg).toBe(true);
         expect(errors, findingsMsg).toHaveLength(0);
+        expect(warnings, findingsMsg).toHaveLength(0);
         return;
       }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INVOICE_V1_0, INVOICE_V1_1 } from '../src/docs.js';
+import { CREDIT_V1_0, CREDIT_V1_1, INVOICE_V1_0, INVOICE_V1_1 } from '../src/docs.js';
 import { check } from '../src/rules-required.js';
 
 function L(value: string | number, attrs: Record<string, string> = {}) {
@@ -795,6 +795,146 @@ describe('required.exemption-reason', () => {
         'required.exemption-reason',
         'Invoice/TaxTotal/TaxSubtotal[0]/TaxCategory/TaxExemptionReason',
         'TaxExemptionReason exceeds maximum length of 300.',
+      ),
+    ]);
+  });
+});
+
+function originalRef(uuid?: string, id?: string) {
+  const node: Record<string, unknown> = {};
+  if (uuid !== undefined) node.UUID = L(uuid);
+  if (id !== undefined) node.ID = L(id);
+  return [{ InvoiceDocumentReference: [node] }];
+}
+
+function asNote(
+  type: string,
+  extra?: (invoice: Record<string, unknown>) => void,
+  version = '1.1',
+) {
+  return doc((inv) => {
+    inv.InvoiceTypeCode = [{ _: type, listVersionID: version }];
+    extra?.(inv);
+  }, version);
+}
+
+describe('required.original-reference', () => {
+  it('accepts a credit note with UUID and ID both present and within 26 characters', () => {
+    expect(
+      check(
+        asNote('02', (inv) => {
+          inv.BillingReference = originalRef('F9D425P6DS7D8IU', 'INV12345');
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it.each(['03', '04'])('accepts type %s with a complete original reference pair', (type) => {
+    expect(
+      check(
+        asNote(type, (inv) => {
+          inv.BillingReference = originalRef('F9D425P6DS7D8IU', 'INV12345');
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('errors when UUID is missing from InvoiceDocumentReference', () => {
+    expect(
+      check(
+        asNote('02', (inv) => {
+          inv.BillingReference = originalRef(undefined, 'INV12345');
+        }),
+      ),
+    ).toEqual([
+      finding(
+        'required.original-reference',
+        'Invoice/BillingReference/InvoiceDocumentReference/UUID',
+        'UUID is missing. Original e-Invoice reference UUID and ID are both required.',
+        { docUrl: CREDIT_V1_1 },
+      ),
+    ]);
+  });
+
+  it('errors when ID is missing from InvoiceDocumentReference', () => {
+    expect(
+      check(
+        asNote('02', (inv) => {
+          inv.BillingReference = originalRef('F9D425P6DS7D8IU', undefined);
+        }),
+      ),
+    ).toEqual([
+      finding(
+        'required.original-reference',
+        'Invoice/BillingReference/InvoiceDocumentReference/ID',
+        'ID is missing. Original e-Invoice reference UUID and ID are both required.',
+        { docUrl: CREDIT_V1_1 },
+      ),
+    ]);
+  });
+
+  it('errors when UUID or ID exceeds 26 characters', () => {
+    expect(
+      check(
+        asNote('02', (inv) => {
+          inv.BillingReference = originalRef('U'.repeat(27), 'INV12345');
+        }),
+      ),
+    ).toEqual([
+      finding(
+        'required.original-reference',
+        'Invoice/BillingReference/InvoiceDocumentReference/UUID',
+        'UUID exceeds maximum length of 26.',
+        { docUrl: CREDIT_V1_1 },
+      ),
+    ]);
+
+    expect(
+      check(
+        asNote('02', (inv) => {
+          inv.BillingReference = originalRef('F9D425P6DS7D8IU', 'I'.repeat(27));
+        }),
+      ),
+    ).toEqual([
+      finding(
+        'required.original-reference',
+        'Invoice/BillingReference/InvoiceDocumentReference/ID',
+        'ID exceeds maximum length of 26.',
+        { docUrl: CREDIT_V1_1 },
+      ),
+    ]);
+  });
+
+  it('warns when a credit note has no InvoiceDocumentReference', () => {
+    expect(check(asNote('02'))).toEqual([
+      finding(
+        'required.original-reference',
+        'Invoice/BillingReference/InvoiceDocumentReference',
+        'Original e-Invoice reference is expected for credit, debit, and refund notes.',
+        { severity: 'warning', docUrl: CREDIT_V1_1 },
+      ),
+    ]);
+  });
+
+  it('does not apply the rule to Invoice type 01', () => {
+    expect(check(doc())).toEqual([]);
+    expect(
+      check(
+        doc((inv) => {
+          inv.BillingReference = originalRef('F9D425P6DS7D8IU', undefined);
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('cites CREDIT_V1_0 for a type 02 version 1.0 finding', () => {
+    const findings = check(asNote('02', undefined, '1.0'));
+    expect(findings).toEqual([
+      finding(
+        'required.original-reference',
+        'Invoice/BillingReference/InvoiceDocumentReference',
+        'Original e-Invoice reference is expected for credit, debit, and refund notes.',
+        { severity: 'warning', docUrl: CREDIT_V1_0 },
       ),
     ]);
   });

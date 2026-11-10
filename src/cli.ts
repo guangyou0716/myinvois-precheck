@@ -15,7 +15,7 @@ const USAGE = 'Usage: myinvois-precheck [--json] [--help] [--version] <file...>'
 
 const HELP = `${USAGE}
 
-Offline pre-submission checker for a MyInvois Invoice (type 01) in UBL 2.1 JSON.
+Offline pre-submission checker for MyInvois Invoice, Credit Note, Debit Note, and Refund Note (types 01-04) in UBL 2.1 JSON.
 
 Options:
   --json      Print a JSON report (array when multiple files)

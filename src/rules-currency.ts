@@ -1,4 +1,4 @@
-import { CURRENCY, INVOICE_V1_0, INVOICE_V1_1 } from './docs.js';
+import { CURRENCY, documentUrl } from './docs.js';
 import type { Finding } from './types.js';
 import { attr, first, num, text } from './ubl.js';
 
@@ -7,7 +7,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function invoiceDocUrl(invoice: unknown): string {
-  return attr(invoice, 'listVersionID', 'InvoiceTypeCode') === '1.0' ? INVOICE_V1_0 : INVOICE_V1_1;
+  return documentUrl(
+    text(invoice, 'InvoiceTypeCode'),
+    attr(invoice, 'listVersionID', 'InvoiceTypeCode'),
+  );
 }
 
 function currencyIdOf(node: Record<string, unknown>): string | undefined {

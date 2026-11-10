@@ -1,4 +1,4 @@
-import { INVOICE_V1_0, INVOICE_V1_1 } from './docs.js';
+import { documentUrl } from './docs.js';
 import type { Finding } from './types.js';
 import { attr, children, first, text } from './ubl.js';
 
@@ -35,9 +35,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function invoiceDocUrl(listVersionID: string | undefined): string {
-  return listVersionID === '1.0' ? INVOICE_V1_0 : INVOICE_V1_1;
-}
+const NOTE_TYPES = new Set(['02', '03', '04']);
+const ORIGINAL_REF_MAX = 26;
 
 function countDigits(value: unknown): number {
   const s = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
@@ -344,6 +343,95 @@ function checkLine(
   checkTaxTotals(findings, line, basePath, docUrl, false);
 }
 
+function checkOriginalReference(
+  findings: Finding[],
+  invoice: unknown,
+  typeCode: string | undefined,
+  docUrl: string,
+): void {
+  if (typeCode === undefined || !NOTE_TYPES.has(typeCode)) return;
+
+  const billings = children(invoice, 'BillingReference');
+  const targets: Array<{
+    billingIndex: number;
+    refIndex: number;
+    ref: unknown;
+    refCount: number;
+  }> = [];
+  for (const [bi, billing] of billings.entries()) {
+    const refs = children(billing, 'InvoiceDocumentReference');
+    for (const [ri, ref] of refs.entries()) {
+      targets.push({ billingIndex: bi, refIndex: ri, ref, refCount: refs.length });
+    }
+  }
+
+  if (targets.length === 0) {
+    push(
+      findings,
+      'required.original-reference',
+      'warning',
+      'Invoice/BillingReference/InvoiceDocumentReference',
+      'Original e-Invoice reference is expected for credit, debit, and refund notes.',
+      docUrl,
+    );
+    return;
+  }
+
+  for (const target of targets) {
+    const billingPath =
+      billings.length > 1
+        ? `Invoice/BillingReference[${target.billingIndex}]`
+        : 'Invoice/BillingReference';
+    const refPath =
+      target.refCount > 1
+        ? `${billingPath}/InvoiceDocumentReference[${target.refIndex}]`
+        : `${billingPath}/InvoiceDocumentReference`;
+
+    const uuid = text(target.ref, 'UUID');
+    const id = text(target.ref, 'ID');
+
+    if (uuid === undefined || uuid === '') {
+      push(
+        findings,
+        'required.original-reference',
+        'error',
+        `${refPath}/UUID`,
+        'UUID is missing. Original e-Invoice reference UUID and ID are both required.',
+        docUrl,
+      );
+    } else if (uuid.length > ORIGINAL_REF_MAX) {
+      push(
+        findings,
+        'required.original-reference',
+        'error',
+        `${refPath}/UUID`,
+        `UUID exceeds maximum length of ${ORIGINAL_REF_MAX}.`,
+        docUrl,
+      );
+    }
+
+    if (id === undefined || id === '') {
+      push(
+        findings,
+        'required.original-reference',
+        'error',
+        `${refPath}/ID`,
+        'ID is missing. Original e-Invoice reference UUID and ID are both required.',
+        docUrl,
+      );
+    } else if (id.length > ORIGINAL_REF_MAX) {
+      push(
+        findings,
+        'required.original-reference',
+        'error',
+        `${refPath}/ID`,
+        `ID exceeds maximum length of ${ORIGINAL_REF_MAX}.`,
+        docUrl,
+      );
+    }
+  }
+}
+
 function walkAmounts(node: unknown, path: string, findings: Finding[], docUrl: string): void {
   if (!isRecord(node)) return;
   for (const [key, value] of Object.entries(node)) {
@@ -373,7 +461,8 @@ export function check(doc: unknown): Finding[] {
   if (!isRecord(invoice)) return [];
 
   const findings: Finding[] = [];
-  const docUrl = invoiceDocUrl(attr(invoice, 'listVersionID', 'InvoiceTypeCode'));
+  const typeCode = text(invoice, 'InvoiceTypeCode');
+  const docUrl = documentUrl(typeCode, attr(invoice, 'listVersionID', 'InvoiceTypeCode'));
 
   requireValue(findings, text(invoice, 'ID'), 'Invoice/ID', 'ID', docUrl, { maxLength: 50 });
 
@@ -415,6 +504,8 @@ export function check(doc: unknown): Finding[] {
     docUrl,
     { lhdnCode: 'CF378' },
   );
+
+  checkOriginalReference(findings, invoice, typeCode, docUrl);
 
   const supplier = first(invoice, 'AccountingSupplierParty');
   if (!isRecord(supplier)) {

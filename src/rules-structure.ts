@@ -1,4 +1,4 @@
-import { INVOICE_V1_0, INVOICE_V1_1, STRUCTURE } from './docs.js';
+import { documentUrl, STRUCTURE } from './docs.js';
 import type { Finding } from './types.js';
 import { attr, children, first, text } from './ubl.js';
 
@@ -6,13 +6,10 @@ const INVOICE_URN = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2';
 
 const SVDP_LIMIT = 'versions 1.2/1.3 (SVDP) are not supported yet';
 
+const SUPPORTED_TYPES = new Set(['01', '02', '03', '04']);
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** Invoice data-structure pages. Unknown or unsupported versions cite v1.1. */
-function invoiceDocUrl(listVersionID: string | undefined): string {
-  return listVersionID === '1.0' ? INVOICE_V1_0 : INVOICE_V1_1;
 }
 
 function markerPresent(doc: Record<string, unknown>, key: string): boolean {
@@ -70,7 +67,7 @@ export function check(doc: unknown): Finding[] {
 
   const typeCode = text(invoice, 'InvoiceTypeCode');
   const listVersionID = attr(invoice, 'listVersionID', 'InvoiceTypeCode')?.trim();
-  const docUrl = invoiceDocUrl(listVersionID);
+  const docUrl = documentUrl(typeCode, listVersionID);
 
   if (typeCode === undefined) {
     findings.push({
@@ -80,12 +77,12 @@ export function check(doc: unknown): Finding[] {
       message: 'InvoiceTypeCode is missing.',
       docUrl,
     });
-  } else if (typeCode !== '01') {
+  } else if (!SUPPORTED_TYPES.has(typeCode)) {
     findings.push({
       rule: 'structure.type-code',
       severity: 'error',
       path: 'Invoice/InvoiceTypeCode',
-      message: `InvoiceTypeCode "${typeCode}" is not an Invoice (01); other types are not supported yet.`,
+      message: `InvoiceTypeCode "${typeCode}" is not supported; only Invoice (01), Credit Note (02), Debit Note (03), and Refund Note (04) are supported (self-billed types 11-14 not yet).`,
       docUrl,
     });
   }
