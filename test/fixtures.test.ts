@@ -10,6 +10,8 @@ const VALID_FILES = new Set([
   'valid-credit-note-1.1.json',
   'valid-debit-note-1.1.json',
   'valid-refund-note-1.1.json',
+  'valid-self-billed-invoice-1.1.json',
+  'valid-self-billed-credit-note-1.1.json',
   'valid-foreign-currency-1.1.json',
   'valid-consolidated-1.1.json',
   'valid-exemption-1.1.json',

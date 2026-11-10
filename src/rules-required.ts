@@ -35,7 +35,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-const NOTE_TYPES = new Set(['02', '03', '04']);
+const NOTE_TYPES = new Set(['02', '03', '04', '12', '13', '14']);
 const ORIGINAL_REF_MAX = 26;
 
 function countDigits(value: unknown): number {
