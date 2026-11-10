@@ -69,9 +69,9 @@ TIN pattern check (`parties.tin-format`) is a **warning**, based on the [LHDN SD
 
 - Rounding tolerance for arithmetic is not documented by LHDN. This tool rounds to 2 decimals and uses tolerance `0.005`.
 - General TIN values (`EI` + 11 digits) come from the LHDN e-Invoice Specific Guideline rather than the SDK.
-- State code `17` for Malaysian addresses is a warning, because consolidated e-Invoices may use it.
+- State code `17` on a Malaysian address is a warning unless the buyer TIN is the consolidated general TIN `EI00000000010`.
 - Official LHDN JSON samples use placeholder values (for example `"Supplier's TIN"`) and inconsistent amounts, so they fail this checker by design.
-- Project fixtures are synthetic.
+- Project fixtures are synthetic: `valid-invoice-1.0.json`, `valid-invoice-1.1.json`, `valid-foreign-currency-1.1.json`, `valid-consolidated-1.1.json`, `valid-exemption-1.1.json`, and `invalid-*.json`.
 
 ## Code tables
 

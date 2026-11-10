@@ -554,6 +554,38 @@ describe('parties.postcode', () => {
     ).toEqual([]);
   });
 
+  it('accepts PostalZone NA for MYS when CountrySubentityCode is 17 (consolidated) and rejects NA otherwise', () => {
+    expect(
+      check(
+        doc((inv) => {
+          const addr = (
+            partyOf(inv, 'AccountingCustomerParty').PostalAddress as Array<Record<string, unknown>>
+          )[0];
+          addr.CountrySubentityCode = L('17');
+          addr.PostalZone = L('NA');
+        }),
+      ),
+    ).toEqual([]);
+    expect(
+      check(
+        doc((inv) => {
+          const addr = (
+            partyOf(inv, 'AccountingCustomerParty').PostalAddress as Array<Record<string, unknown>>
+          )[0];
+          addr.CountrySubentityCode = L('14');
+          addr.PostalZone = L('NA');
+        }),
+      ),
+    ).toEqual([
+      finding(
+        'parties.postcode',
+        'Invoice/AccountingCustomerParty/Party/PostalAddress/PostalZone',
+        'PostalZone must be 1-5 digits.',
+        { lhdnCode: 'CF405' },
+      ),
+    ]);
+  });
+
   it('errors when PostalZone is invalid', () => {
     expect(
       check(

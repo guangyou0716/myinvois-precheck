@@ -298,7 +298,19 @@ describe('codes.state', () => {
     ]);
   });
 
-  it('warns with CV317 when country is MYS and CountrySubentityCode is 17', () => {
+  it('accepts MYS CountrySubentityCode 17 for a consolidated buyer (TIN EI00000000010) and still warns otherwise', () => {
+    expect(
+      ofRule(
+        check(
+          doc((inv) => {
+            const buyer = partyOf(inv, 'AccountingCustomerParty');
+            buyer.PartyIdentification = [{ ID: L('EI00000000010', { schemeID: 'TIN' }) }];
+            buyer.PostalAddress = [address('MYS', '17')];
+          }),
+        ),
+        'codes.state',
+      ),
+    ).toEqual([]);
     expect(
       ofRule(
         check(
@@ -312,6 +324,23 @@ describe('codes.state', () => {
       finding(
         'codes.state',
         'Invoice/AccountingSupplierParty/Party/PostalAddress/CountrySubentityCode',
+        'State Code 17 should be used for Consolidated e-Invoice and non-Malaysian address only',
+        { severity: 'warning', lhdnCode: 'CV317' },
+      ),
+    ]);
+    expect(
+      ofRule(
+        check(
+          doc((inv) => {
+            partyOf(inv, 'AccountingCustomerParty').PostalAddress = [address('MYS', '17')];
+          }),
+        ),
+        'codes.state',
+      ),
+    ).toEqual([
+      finding(
+        'codes.state',
+        'Invoice/AccountingCustomerParty/Party/PostalAddress/CountrySubentityCode',
         'State Code 17 should be used for Consolidated e-Invoice and non-Malaysian address only',
         { severity: 'warning', lhdnCode: 'CV317' },
       ),
