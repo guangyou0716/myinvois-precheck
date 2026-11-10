@@ -5,13 +5,13 @@ export const XML_MAX_DEPTH = 200;
 const CAC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
 const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
 
-const PREDEFINED_ENTITIES: Record<string, string> = {
+const PREDEFINED_ENTITIES: Record<string, string> = Object.assign(Object.create(null), {
   lt: '<',
   gt: '>',
   amp: '&',
   apos: "'",
   quot: '"',
-};
+});
 
 export class XmlParseError extends Error {
   readonly line: number;

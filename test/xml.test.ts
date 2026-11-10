@@ -299,6 +299,36 @@ describe('xmlToUbl rejections', () => {
     expect(err.message).toMatch(/unknown entity &unknown;/);
   });
 
+  it.each(['constructor', 'toString', 'hasOwnProperty', '__proto__'] as const)(
+    'rejects prototype-key entity &%s; in text content',
+    (name) => {
+      const err = parseError(invoiceXml(`<cbc:ID>&${name};</cbc:ID>`));
+      expect(err).toBeInstanceOf(XmlParseError);
+      expect(err.message).toMatch(new RegExp(`unknown entity &${name};`));
+    },
+  );
+
+  it.each(['constructor', 'toString', 'hasOwnProperty', '__proto__'] as const)(
+    'rejects prototype-key entity &%s; in an attribute value',
+    (name) => {
+      const err = parseError(invoiceXml(`<cbc:ID schemeID="&${name};">x</cbc:ID>`));
+      expect(err).toBeInstanceOf(XmlParseError);
+      expect(err.message).toMatch(new RegExp(`unknown entity &${name};`));
+    },
+  );
+
+  it('decodes the five predefined entities in text content and attribute values', () => {
+    const xml = invoiceXml(
+      `<cbc:Note schemeID="&lt;&gt;&amp;&apos;&quot;">&lt;&gt;&amp;&apos;&quot;</cbc:Note>`,
+    );
+    expect(xmlToUbl(xml)).toEqual({
+      _D: INV,
+      _A: CAC,
+      _B: CBC,
+      Invoice: [{ Note: [{ _: `<>&'"`, schemeID: `<>&'"` }] }],
+    });
+  });
+
   it('rejects a duplicate attribute on one element', () => {
     const err = parseError(`<Invoice ${NS} foo="1" foo="2"></Invoice>`);
     expect(err.message).toMatch(/duplicate attribute foo/);
