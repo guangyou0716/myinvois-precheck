@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -23,8 +23,10 @@ let failed = false;
 
 for (const name of NAMES) {
   const url = `${BASE}/${name}.json`;
+  const destPath = join(outDir, `${name}.json`);
+  const tmpPath = join(outDir, `${name}.json.tmp`);
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
     if (!response.ok) {
       throw new Error(`${url} returned HTTP ${response.status}`);
     }
@@ -41,12 +43,20 @@ for (const name of NAMES) {
       }
     }
 
-    await writeFile(join(outDir, `${name}.json`), `${JSON.stringify(data, null, 2)}\n`);
+    await writeFile(tmpPath, `${JSON.stringify(data, null, 2)}\n`);
+    await rename(tmpPath, destPath);
     console.log(`${name}: ${data.length} codes`);
   } catch (error) {
     failed = true;
     const message = error instanceof Error ? error.message : String(error);
     console.error(`${name}: ${message}`);
+    try {
+      await unlink(tmpPath);
+    } catch (cleanupError) {
+      if (cleanupError && typeof cleanupError === 'object' && 'code' in cleanupError && cleanupError.code !== 'ENOENT') {
+        throw cleanupError;
+      }
+    }
   }
 }
 
