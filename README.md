@@ -42,7 +42,7 @@ Each finding cites the matching LHDN SDK page: validator error pages under [docu
 
 | Group | Description | LHDN codes |
 |-------|-------------|------------|
-| structure | JSON root with a non-empty `Invoice` array; UBL markers `_D` / `_A` / `_B`; `InvoiceTypeCode` `01` / `02` / `03` / `04` / `11` / `12` / `13` / `14`; `listVersionID` `1.0` / `1.1` / `1.2` / `1.3`; `Signature` and `UBLExtensions` present on v1.1 and v1.3; warning on v1.2 / v1.3 (SVDP until 31 December 2027); warning when an attribute value has surrounding whitespace | — |
+| structure | JSON root with a non-empty `Invoice` array; UBL markers `_D` / `_A` / `_B`; `InvoiceTypeCode` `01` / `02` / `03` / `04` / `11` / `12` / `13` / `14`; `listVersionID` `1.0` / `1.1` / `1.2` / `1.3`; `Signature` and `UBLExtensions` present on v1.1 and v1.3; warning on v1.2 / v1.3 (SVDP until 31 December 2027); warning when an attribute value has surrounding whitespace; XML child-element order against UBL 2.1 `xsd:sequence` (`structure.element-order`, XML input only) | — |
 | required | Mandatory invoice, party, tax, monetary-total, and line fields; original e-Invoice reference (`UUID` and `ID`) on credit, debit, and refund notes (including self-billed `12` / `13` / `14`); `IssueDate` / `IssueTime` format; max lengths; amount values limited to 26 digits; tax exemption reason when tax type is `E` | CF378 |
 | parties | Supplier and buyer TIN length and FAQ format; NRIC / PASSPORT / ARMY / BRN length; SST and tourism tax (TTX) format; email and phone; address line, city, and postcode; General TIN / ID-type combinations (`parties.general-tin`). Foreign supplier for ERR213 and ERR220 is inferred from the supplier postal address country code not being `MYS` | CF345, CF346, CF400, CF401, CF404–CF412, ERR208, ERR211, ERR213, ERR217, ERR220, ERR222, ERR229, ERR236, ERR237, ERR255 |
 | codes | Invoice type, currency, country, state, tax type, MSIC, classification, unit, and payment method against LHDN code tables; Malaysian state codes on non-`MYS` addresses | CV302, CV316, CV317 |
@@ -63,7 +63,6 @@ TIN pattern check (`parties.tin-format`) is a **warning**, based on the [LHDN SD
 - Document size limit
 - Tax rate × taxable amount
 - “Total taxable amount per tax type” formula
-- XML element order (planned)
 
 ## Known TODOs / uncertainties
 
@@ -72,11 +71,13 @@ TIN pattern check (`parties.tin-format`) is a **warning**, based on the [LHDN SD
 - Foreign supplier for ERR213 and ERR220 is inferred from the supplier postal address country code not being `MYS`.
 - State code `17` on a Malaysian address is a warning unless the buyer TIN is the consolidated general TIN `EI00000000010`.
 - Official LHDN JSON and XML samples use placeholder values (for example `"Supplier's TIN"`) and inconsistent amounts, so they fail this checker by design. The XML/JSON sample pairs in `test/samples/` are the public SDK twins; some pairs are not identical documents.
-- Project fixtures are synthetic: `valid-invoice-1.0.json`, `valid-invoice-1.1.json`, `valid-invoice-1.1.xml`, `valid-invoice-1.2.json`, `valid-invoice-1.3.json`, `valid-credit-note-1.1.json`, `valid-debit-note-1.1.json`, `valid-refund-note-1.1.json`, `valid-self-billed-invoice-1.1.json`, `valid-self-billed-credit-note-1.1.json`, `valid-foreign-supplier-self-billed-1.1.json`, `valid-foreign-currency-1.1.json`, `valid-consolidated-1.1.json`, `valid-exemption-1.1.json`, and `invalid-*.json`.
+- Project fixtures are synthetic: `valid-invoice-1.0.json`, `valid-invoice-1.1.json`, `valid-invoice-1.1.xml`, `valid-invoice-1.2.json`, `valid-invoice-1.3.json`, `valid-credit-note-1.1.json`, `valid-debit-note-1.1.json`, `valid-refund-note-1.1.json`, `valid-self-billed-invoice-1.1.json`, `valid-self-billed-credit-note-1.1.json`, `valid-foreign-supplier-self-billed-1.1.json`, `valid-foreign-currency-1.1.json`, `valid-consolidated-1.1.json`, `valid-exemption-1.1.json`, `order-valid.xml`, `order-swapped-address.xml`, and `invalid-*.json`.
 
 ## Code tables
 
 `data/codes/*.json` are verbatim copies of LHDN’s public code tables from [https://sdk.myinvois.hasil.gov.my/codes/](https://sdk.myinvois.hasil.gov.my/codes/). Refresh with `npm run fetch-codes` (a dev-only network script). Downloaded 2026-11-10.
+
+`data/ubl-order.json` is generated from the OASIS UBL 2.1 (os-UBL-2.1) XSDs [UBL-Invoice-2.1.xsd](https://docs.oasis-open.org/ubl/os-UBL-2.1/xsd/maindoc/UBL-Invoice-2.1.xsd) and [UBL-CommonAggregateComponents-2.1.xsd](https://docs.oasis-open.org/ubl/os-UBL-2.1/xsd/common/UBL-CommonAggregateComponents-2.1.xsd). Refresh with `npm run gen-ubl-order`. Pass `--download` to fetch those XSDs from OASIS (30 s timeout, atomic write); the XSDs themselves are not stored in this repository.
 
 `test/samples/` holds official LHDN SDK Invoice XML/JSON sample pairs (the same class of public SDK material as the code tables) used for XML↔JSON equivalence tests.
 
@@ -87,6 +88,7 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm run gen-ubl-order
 ```
 
 CI runs on Node 20 and 22.

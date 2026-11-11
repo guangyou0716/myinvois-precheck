@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { STRUCTURE } from '../src/docs.js';
 import { validate, validateJson, validateXml } from '../src/validate.js';
-import { XML_MAX_DEPTH, XmlParseError, xmlToUbl } from '../src/xml.js';
+import { CBC_NS, parseXml, XML_MAX_DEPTH, XmlParseError, xmlToUbl } from '../src/xml.js';
 import type { Finding, ValidationResult } from '../src/types.js';
 
 const INV = 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2';
@@ -176,6 +176,15 @@ describe('xmlToUbl', () => {
       _B: CBC,
       Invoice: [{ ID: [{ _: '  padded  ' }] }],
     });
+  });
+
+  it('parseXml preserves sibling order and resolves namespace URIs', () => {
+    const root = parseXml(
+      invoiceXml('<cbc:IssueDate>d</cbc:IssueDate><cbc:ID>x</cbc:ID>'),
+    );
+    expect(root.localName).toBe('Invoice');
+    expect(root.children.map((child) => child.localName)).toEqual(['IssueDate', 'ID']);
+    expect(root.children.every((child) => child.namespaceURI === CBC_NS)).toBe(true);
   });
 
   it('collects repeated child elements as arrays in document order', () => {

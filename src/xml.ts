@@ -2,8 +2,9 @@
 
 export const XML_MAX_DEPTH = 200;
 
-const CAC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
-const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+export const CAC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
+export const CBC_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+export const EXT_NS = 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2';
 
 const PREDEFINED_ENTITIES: Record<string, string> = Object.assign(Object.create(null), {
   lt: '<',
@@ -25,10 +26,11 @@ export class XmlParseError extends Error {
 
 type XmlAttr = { name: string; value: string };
 
-type XmlElement = {
+export type XmlElement = {
   qName: string;
   localName: string;
   prefix: string;
+  namespaceURI: string;
   attrs: XmlAttr[];
   children: XmlElement[];
   text: string;
@@ -275,7 +277,7 @@ class Reader {
     this.skipWs();
     if (this.startsWith('/>')) {
       this.consume('/>');
-      return { qName, localName, prefix, attrs, children: [], text: '', line };
+      return { qName, localName, prefix, namespaceURI: '', attrs, children: [], text: '', line };
     }
     if (this.peek() !== '>') this.fail(`malformed start tag <${qName}>`);
     this.next();
@@ -315,8 +317,15 @@ class Reader {
 
     const joined = texts.join('');
     const text = children.length === 0 ? joined : joined.trim() === '' ? '' : joined;
-    return { qName, localName, prefix, attrs, children, text, line };
+    return { qName, localName, prefix, namespaceURI: '', attrs, children, text, line };
   }
+}
+
+function resolveNamespaces(el: XmlElement, parent: Map<string, string>): void {
+  const ns = new Map(parent);
+  for (const [prefix, uri] of xmlnsMap(el)) ns.set(prefix, uri);
+  el.namespaceURI = ns.get(el.prefix) ?? '';
+  for (const child of el.children) resolveNamespaces(child, ns);
 }
 
 function xmlnsMap(el: XmlElement): Map<string, string> {
@@ -354,7 +363,8 @@ function convertElement(el: XmlElement): Record<string, unknown> {
   return obj;
 }
 
-export function xmlToUbl(text: string): unknown {
+/** Parse XML into an element tree with namespace URIs resolved. JSON-shape conversion is separate. */
+export function parseXml(text: string): XmlElement {
   const reader = new Reader(text);
   reader.skipMisc();
   if (reader.eof()) reader.fail('missing root element');
@@ -364,7 +374,12 @@ export function xmlToUbl(text: string): unknown {
   const root = reader.parseElement(1);
   reader.skipMisc();
   if (!reader.eof()) reader.fail('unexpected content after the root element');
+  resolveNamespaces(root, new Map());
+  return root;
+}
 
+/** Convert a parsed Invoice element tree into the JSON shape the existing rules consume. */
+export function xmlElementToUbl(root: XmlElement): unknown {
   if (root.localName !== 'Invoice') {
     throw new XmlParseError(`root element must be Invoice, got ${root.localName}`, root.line);
   }
@@ -384,4 +399,8 @@ export function xmlToUbl(text: string): unknown {
 
   result.Invoice = [convertElement(root)];
   return result;
+}
+
+export function xmlToUbl(text: string): unknown {
+  return xmlElementToUbl(parseXml(text));
 }
