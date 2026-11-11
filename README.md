@@ -1,6 +1,6 @@
 # myinvois-precheck
 
-myinvois-precheck is a free, offline, stateless pre-submission checker (CLI and TypeScript library) for Malaysia MyInvois e-Invoices in LHDN’s UBL 2.1 JSON format. It covers Invoice (`01`), Credit Note (`02`), Debit Note (`03`), Refund Note (`04`), Self-billed Invoice (`11`), Self-billed Credit Note (`12`), Self-billed Debit Note (`13`), and Self-billed Refund Note (`14`) for document versions `1.0`, `1.1`, `1.2`, and `1.3`. Versions `1.2` and `1.3` are SVDP (e-Invoice Voluntary Disclosure Programme) variants of `1.0` and `1.1`. It makes no network calls, uses no credentials, and never submits a document.
+myinvois-precheck is a free, offline, stateless pre-submission checker (CLI and TypeScript library) for Malaysia MyInvois e-Invoices in LHDN’s UBL 2.1 JSON or XML format. It covers Invoice (`01`), Credit Note (`02`), Debit Note (`03`), Refund Note (`04`), Self-billed Invoice (`11`), Self-billed Credit Note (`12`), Self-billed Debit Note (`13`), and Self-billed Refund Note (`14`) for document versions `1.0`, `1.1`, `1.2`, and `1.3`. Versions `1.2` and `1.3` are SVDP (e-Invoice Voluntary Disclosure Programme) variants of `1.0` and `1.1`. It makes no network calls, uses no credentials, and never submits a document.
 
 **This project is not affiliated with, endorsed by, or connected to Lembaga Hasil Dalam Negeri Malaysia (LHDN/HASiL). Passing this check does not guarantee that MyInvois will accept the document. The official MyInvois validators are authoritative.**
 
@@ -11,13 +11,16 @@ The package is private and is not published to npm. Build from this repository:
 ```bash
 npm ci && npm run build
 node dist/cli.js invoice.json
+node dist/cli.js invoice.xml
 ```
 
 Pass `--json` for JSON output. Pass more than one file to check several invoices in one run:
 
 ```bash
-node dist/cli.js --json invoice.json another.json
+node dist/cli.js --json invoice.json another.xml
 ```
+
+Files ending in `.xml` (any case), or whose content starts with `<`, are parsed as XML. XML is converted to the same UBL JSON shape the rules already consume. The XML root element must be `Invoice` (as in LHDN's samples for all document types). `<!DOCTYPE>` and `<!ENTITY>` declarations are rejected (no DTD or entity expansion).
 
 Exit codes:
 
@@ -30,7 +33,7 @@ Exit codes:
 Library:
 
 ```js
-import { validateJson } from './dist/index.js';
+import { validate, validateJson, validateXml } from './dist/index.js';
 ```
 
 ## What it checks
@@ -57,11 +60,10 @@ TIN pattern check (`parties.tin-format`) is a **warning**, based on the [LHDN SD
 - Referenced documents
 - Duplicate detection
 - Issuance date/time window
-- XML documents (planned)
 - Document size limit
 - Tax rate × taxable amount
 - “Total taxable amount per tax type” formula
-- The XML element-order structure rule
+- XML element order (planned)
 
 ## Known TODOs / uncertainties
 
@@ -69,12 +71,14 @@ TIN pattern check (`parties.tin-format`) is a **warning**, based on the [LHDN SD
 - General TIN values (`EI` + 11 digits) come from the LHDN e-Invoice Specific Guideline rather than the SDK.
 - Foreign supplier for ERR213 and ERR220 is inferred from the supplier postal address country code not being `MYS`.
 - State code `17` on a Malaysian address is a warning unless the buyer TIN is the consolidated general TIN `EI00000000010`.
-- Official LHDN JSON samples use placeholder values (for example `"Supplier's TIN"`) and inconsistent amounts, so they fail this checker by design.
-- Project fixtures are synthetic: `valid-invoice-1.0.json`, `valid-invoice-1.1.json`, `valid-invoice-1.2.json`, `valid-invoice-1.3.json`, `valid-credit-note-1.1.json`, `valid-debit-note-1.1.json`, `valid-refund-note-1.1.json`, `valid-self-billed-invoice-1.1.json`, `valid-self-billed-credit-note-1.1.json`, `valid-foreign-supplier-self-billed-1.1.json`, `valid-foreign-currency-1.1.json`, `valid-consolidated-1.1.json`, `valid-exemption-1.1.json`, and `invalid-*.json`.
+- Official LHDN JSON and XML samples use placeholder values (for example `"Supplier's TIN"`) and inconsistent amounts, so they fail this checker by design. The XML/JSON sample pairs in `test/samples/` are the public SDK twins; some pairs are not identical documents.
+- Project fixtures are synthetic: `valid-invoice-1.0.json`, `valid-invoice-1.1.json`, `valid-invoice-1.1.xml`, `valid-invoice-1.2.json`, `valid-invoice-1.3.json`, `valid-credit-note-1.1.json`, `valid-debit-note-1.1.json`, `valid-refund-note-1.1.json`, `valid-self-billed-invoice-1.1.json`, `valid-self-billed-credit-note-1.1.json`, `valid-foreign-supplier-self-billed-1.1.json`, `valid-foreign-currency-1.1.json`, `valid-consolidated-1.1.json`, `valid-exemption-1.1.json`, and `invalid-*.json`.
 
 ## Code tables
 
 `data/codes/*.json` are verbatim copies of LHDN’s public code tables from [https://sdk.myinvois.hasil.gov.my/codes/](https://sdk.myinvois.hasil.gov.my/codes/). Refresh with `npm run fetch-codes` (a dev-only network script). Downloaded 2026-11-10.
+
+`test/samples/` holds official LHDN SDK Invoice XML/JSON sample pairs (the same class of public SDK material as the code tables) used for XML↔JSON equivalence tests.
 
 ## Development
 

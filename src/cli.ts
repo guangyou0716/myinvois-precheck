@@ -2,7 +2,7 @@
 import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { formatJson, formatText } from './report.js';
-import { validateJson } from './validate.js';
+import { looksLikeXml, validateJson, validateXml } from './validate.js';
 import type { ValidationResult } from './types.js';
 
 export type CliIo = {
@@ -15,7 +15,9 @@ const USAGE = 'Usage: myinvois-precheck [--json] [--help] [--version] <file...>'
 
 const HELP = `${USAGE}
 
-Offline pre-submission checker for MyInvois Invoice, Credit Note, Debit Note, Refund Note, and self-billed types (01-04, 11-14) in UBL 2.1 JSON.
+Offline pre-submission checker for MyInvois Invoice, Credit Note, Debit Note, Refund Note, and self-billed types (01-04, 11-14) in UBL 2.1 JSON or XML.
+
+Files ending in .xml (any case), or whose content starts with <, are parsed as XML. XML documents that contain <!DOCTYPE> or <!ENTITY> are rejected.
 
 Options:
   --json      Print a JSON report (array when multiple files)
@@ -93,7 +95,8 @@ export function run(
       unreadable = true;
       continue;
     }
-    results.push({ file, result: validateJson(text) });
+    const xml = file.toLowerCase().endsWith('.xml') || looksLikeXml(text);
+    results.push({ file, result: xml ? validateXml(text) : validateJson(text) });
   }
 
   if (jsonMode) {

@@ -175,4 +175,37 @@ describe('run', () => {
     const parsed: unknown = JSON.parse(io.out);
     expect(parsed).toMatchObject({ file: 'inv.json', ok: false });
   });
+
+  it('mentions XML input in --help', () => {
+    const io = fakeIo();
+    expect(run(['--help'], io)).toBe(0);
+    expect(io.out).toContain('UBL 2.1 JSON or XML');
+    expect(io.out).toContain('<!DOCTYPE>');
+  });
+
+  it('validates a .xml file as XML', () => {
+    const io = fakeIo({ 'inv.xml': '<not-closed>' });
+    expect(run(['inv.xml'], io)).toBe(1);
+    expect(io.out).toContain('ERROR  structure.xml-parse');
+  });
+
+  it('validates a .XML file as XML regardless of case', () => {
+    const io = fakeIo({ 'INV.XML': '<not-closed>' });
+    expect(run(['INV.XML'], io)).toBe(1);
+    expect(io.out).toContain('ERROR  structure.xml-parse');
+  });
+
+  it('treats content that starts with < as XML even without a .xml suffix', () => {
+    const io = fakeIo({ 'inv.json': '  <Invoice></Missing>' });
+    expect(run(['inv.json'], io)).toBe(1);
+    expect(io.out).toContain('ERROR  structure.xml-parse');
+  });
+
+  it('exits 0 for the valid 1.1 XML fixture', () => {
+    const xml = readFileSync(new URL('../fixtures/valid-invoice-1.1.xml', import.meta.url), 'utf8');
+    const io = fakeIo({ 'valid.xml': xml });
+    expect(run(['valid.xml'], io)).toBe(0);
+    expect(io.out).toContain('valid.xml  1.1  PASS');
+    expect(io.out).toContain('0 errors, 0 warnings');
+  });
 });
