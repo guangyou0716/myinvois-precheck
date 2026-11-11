@@ -1,13 +1,14 @@
 import { STRUCTURE } from './docs.js';
 import { check as checkCodes } from './rules-codes.js';
 import { check as checkCurrency } from './rules-currency.js';
+import { check as checkElementOrder } from './rules-element-order.js';
 import { check as checkMath } from './rules-math.js';
 import { check as checkParties } from './rules-parties.js';
 import { check as checkRequired } from './rules-required.js';
 import { check as checkStructure } from './rules-structure.js';
 import type { Finding, ValidationResult } from './types.js';
 import { attr } from './ubl.js';
-import { xmlToUbl } from './xml.js';
+import { parseXml, xmlElementToUbl, type XmlElement } from './xml.js';
 
 const extraChecks = [checkRequired, checkParties, checkCodes, checkCurrency, checkMath];
 
@@ -65,13 +66,20 @@ export function validateJson(text: string): ValidationResult {
 
 export function validateXml(text: string): ValidationResult {
   const stripped = text.startsWith('\uFEFF') ? text.slice(1) : text;
+  let root: XmlElement;
   let doc: unknown;
   try {
-    doc = xmlToUbl(stripped);
+    root = parseXml(stripped);
+    doc = xmlElementToUbl(root);
   } catch (cause) {
     return parseFinding('structure.xml-parse', 'XML parse failed', cause);
   }
-  return validateDocument(doc);
+  const result = validateDocument(doc);
+  const orderFindings = checkElementOrder(root);
+  if (orderFindings.length === 0) return result;
+  result.findings.push(...orderFindings);
+  if (orderFindings.some((finding) => finding.severity === 'error')) result.ok = false;
+  return result;
 }
 
 /** True when the first non-whitespace character is `<` (UTF-8 BOM ignored). */

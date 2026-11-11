@@ -1,11 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+  <UBLExtensions xmlns="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
+    <UBLExtension>
+      <ExtensionURI>urn:oasis:names:specification:ubl:dsig:enveloped:xades</ExtensionURI>
+      <ExtensionContent>
+        <UBLDocumentSignatures>
+          <SignatureInformation>
+            <cbc:ID>urn:oasis:names:specification:ubl:signature:1</cbc:ID>
+            <ReferencedSignatureID>urn:oasis:names:specification:ubl:signature:Invoice</ReferencedSignatureID>
+            <ds:Signature Id="signature">
+              <ds:Object>
+                <ds:QualifyingProperties Target="signature">
+                  <ds:SignedProperties Id="id-xades-signed-props">
+                    <ds:SignedSignatureProperties>
+                      <ds:SigningTime>2025-04-15T02:01:36Z</ds:SigningTime>
+                      <ds:SigningCertificate>
+                        <ds:Cert>
+                          <ds:CertDigest>
+                            <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+                            <ds:DigestValue>+kdLjFra9qRhG35bEKff9ZPjj6Bq6W6/j0NS0st/ves=</ds:DigestValue>
+                          </ds:CertDigest>
+                          <ds:IssuerSerial>
+                            <ds:X509IssuerName>C=MY, O=Raffcomm Technologies Sdn Bhd, OU=1000449-W, CN=CypherSign Pro Max</ds:X509IssuerName>
+                            <ds:X509SerialNumber>1308502606566147853</ds:X509SerialNumber>
+                          </ds:IssuerSerial>
+                        </ds:Cert>
+                      </ds:SigningCertificate>
+                    </ds:SignedSignatureProperties>
+                  </ds:SignedProperties>
+                </ds:QualifyingProperties>
+              </ds:Object>
+              <ds:KeyInfo>
+                <ds:X509Data>
+                  <ds:X509Certificate>MIIFJzCCBA+gAwIBAgIIEii8MBwMRw0wDQYJKoZIhvcNAQELBQAwZjEbMBkGA1UEAwwSQ3lwaGVyU2lnbiBQcm8gTWF4MRIwEAYDVQQLDAkxMDAwNDQ5LVcxJjAkBgNVBAoMHVJhZmZjb21tIFRlY2hub2xvZ2llcyBTZG4gQmhkMQswCQYDVQQGEwJNWTAeFw0yNDA2MjEwMTExNTBaFw0yNTA2MjEwMTExNTBaMIGbMSQwIgYJKoZIhvcNAQkBFhV0ZXN0LmNlcnRAcmFmZmNvbW0ubXkxDjAMBgNVBAMMBUR1bW15MRIwEAYDVQQFEwlEMTIzNDU2NzgxGzAZBgNVBAsMElRlc3QgVW5pdCBlSW52b2ljZTEVMBMGA1UEYQwMQzI5NzAyNjM1MDYwMQ4wDAYDVQQKDAVEdW1teTELMAkGA1UEBhMCTVkwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDi+PCSf8b/CNXyPrwrOsSRv9RlZnD3IR+k+5BbwYW6kKDa9ES5AHwSWibluBEZCT2BvcMjodnZUHDCPl1jUzS8TJ65YIBYe3p9nuQiE6v3mtwj53KcUEawDa6d2emTftenoRgIN6sx935elnI3+nHDTBDuHgaG6m7H118LlfEpU39I8aTv5AZotSezfmHfD5Vmysm8bkvLV0ibm4KQfj4aRqoTfiakQpFwamMJ+SSKUwzrYghF0OHUIuu0kNr21GMN7Q3wWZjPQRF484xeUhFaL+CsjeeIFzxEjvDs/kSNfUaQZPwAfyuG70adzMTul7gGo1Bzz4uJWz5znfomk2ZbAgMBAAGjggGhMIIBnTAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFGtOaNbCTehELL1jFh4g6YilI5ueMFYGCCsGAQUFBwEBBEowSDBGBggrBgEFBQcwAYY6aHR0cDovL29jc3AuY3lwaGVyc2lnbi5teTo4MDgwL2VqYmNhL3B1YmxpY3dlYi9zdGF0dXMvb2NzcDCBhAYDVR0gBH0wezA7BgUrBgEEATAyMDAGCCsGAQUFBwICMCQeIgAxAC4AMwAuADYALgAxAC4ANAAuADEALgA1ADEAMgAxADUwPAYIKwYBBQUHAgEwMDAuBggrBgEFBQcCARYiaHR0cHM6Ly93d3cucmFmZnRlY2gubXkvcmVwb3NpdG9yeTAfBgNVHSUEGDAWBggrBgEFBQcDBAYKKwYBBAGCNwoDDDA9BgNVHR8ENjA0MDKgMKAuhixodHRwczovL3d3dy5yYWZmdGVjaC5teS9jcmwvQ3lwaGVyU2lnblByb01heDAdBgNVHQ4EFgQULWvOw9mY47L3XKdMqla4XfzWQ2swDgYDVR0PAQH/BAQDAgTQMA0GCSqGSIb3DQEBCwUAA4IBAQCsf4enIwiYRm4DjmKBRic2uHkGCeMqQ4I/Q4J+vOkeH3qUFBhz/sfpNdFaLBAA8rukRi0y0kp4oHIEg4Rj9yjjVv1LTOCbZkzx5kmif9yhP2nzJig9A7WfDfh+QhMf0HBcby/WIJ7bedvIToLwrsyzhLFZryM4x4KGsS0HxiTA+2uSIhhbi+0Ol9PnuvLit08oD2hCD9UqB1t94KkbQafAlaIHsmoZTFiJP9iB7EWpLZyDEGEyMllh6rEBMPwU4j8wd08JLN46O29KLJMCmsqLNMoh412Ay/rLK7Y6mhgYse6zZmcrovZbYhHicQxwsbM3jHAtYzh9v/8oOgVTC6bR</ds:X509Certificate>
+                  <ds:X509SubjectName>C=MY, O=Raffcomm Technologies Sdn Bhd, OU=1000449-W, CN=CypherSign Pro Max</ds:X509SubjectName>
+                  <ds:X509IssuerSerial>
+                    <ds:X509IssuerName>C=MY, O=Raffcomm Technologies Sdn Bhd, OU=1000449-W, CN=CypherSign Pro Max</ds:X509IssuerName>
+                    <ds:X509SerialNumber>1308502606566147853</ds:X509SerialNumber>
+                  </ds:X509IssuerSerial>
+                </ds:X509Data>
+              </ds:KeyInfo>
+              <ds:SignatureValue>w5LWz+bY+B2tghxgCjAJ4cZ4daIskkk3RfY9a9nMMD8ryZo6StL4VxFJq1Xh8zrYAjWWRw7DvcUP5prEQEQWpA3ocdI74pHr39T+b20u2iy70mtkZpz6NTtYF7ZL9Hls8MtK/fKDy/JJb4S7IxF0c7y8IQ258vUCARriUaHvhB3zoL2lKi7dH4EwTfDz1bQd5cKVM7CxD/0k3vB37prhW0YGtarhErqRXeqgWPvWvgkksO73MjMNmwJJymfWaYp42LiPelBB2deB1NNEeIV8qOYG6O9dnwTGB6gE5MzaYYwk2Vrw7/9vARnTrhL5qe3VaCkYAJvzxCTWm9P73SKODg==</ds:SignatureValue>
+              <ds:SignedInfo>
+                <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+                <ds:Reference Type="http://uri.etsi.org/01903/v1.3.2#SignedProperties" URI="#id-xades-signed-props">
+                  <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+                  <ds:DigestValue>YtnXjwGD9a3izt01otM5PrZWSqCkALYkRogvArtxK9Q=</ds:DigestValue>
+                </ds:Reference>
+                <ds:Reference Type="" URI="">
+                  <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+                  <ds:DigestValue>3+0mMUPmCNfK/yILqruu9vXKnHsj50Q9knpXrBXzfV0=</ds:DigestValue>
+                </ds:Reference>
+              </ds:SignedInfo>
+            </ds:Signature>
+          </SignatureInformation>
+        </UBLDocumentSignatures>
+      </ExtensionContent>
+    </UBLExtension>
+  </UBLExtensions>
   <cbc:ID>JSON-INV12345</cbc:ID>
   <cbc:IssueDate>2024-07-23</cbc:IssueDate>
   <cbc:IssueTime>00:30:00Z</cbc:IssueTime>
   <cbc:InvoiceTypeCode listVersionID="1.1">01</cbc:InvoiceTypeCode>
   <cbc:DocumentCurrencyCode>MYR</cbc:DocumentCurrencyCode>
   <cbc:TaxCurrencyCode>MYR</cbc:TaxCurrencyCode>
+  <cac:Signature>
+    <cbc:ID>urn:oasis:names:specification:ubl:signature:Invoice</cbc:ID>
+    <ds:SignatureMethod>urn:oasis:names:specification:ubl:dsig:enveloped:xades</ds:SignatureMethod>
+  </cac:Signature>
   <cac:AccountingSupplierParty>
     <cac:Party>
       <cbc:IndustryClassificationCode name="Wholesale of computer hardware, software and peripherals">46510</cbc:IndustryClassificationCode>
@@ -49,6 +111,18 @@
   </cac:AccountingSupplierParty>
   <cac:AccountingCustomerParty>
     <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="TIN">C9876543210</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="BRN">201901234567</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="SST">NA</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="TTX">NA</cbc:ID>
+      </cac:PartyIdentification>
       <cac:PostalAddress>
         <cbc:CityName>Kuala Lumpur</cbc:CityName>
         <cbc:PostalZone>50480</cbc:PostalZone>
@@ -69,18 +143,6 @@
       <cac:PartyLegalEntity>
         <cbc:RegistrationName>Buyer's Name</cbc:RegistrationName>
       </cac:PartyLegalEntity>
-      <cac:PartyIdentification>
-        <cbc:ID schemeID="TIN">C9876543210</cbc:ID>
-      </cac:PartyIdentification>
-      <cac:PartyIdentification>
-        <cbc:ID schemeID="BRN">201901234567</cbc:ID>
-      </cac:PartyIdentification>
-      <cac:PartyIdentification>
-        <cbc:ID schemeID="SST">NA</cbc:ID>
-      </cac:PartyIdentification>
-      <cac:PartyIdentification>
-        <cbc:ID schemeID="TTX">NA</cbc:ID>
-      </cac:PartyIdentification>
       <cac:Contact>
         <cbc:Telephone>+60123456789</cbc:Telephone>
         <cbc:ElectronicMail>buyer@example.com</cbc:ElectronicMail>
@@ -140,13 +202,13 @@
       </cac:TaxSubtotal>
     </cac:TaxTotal>
     <cac:Item>
-      <cac:CommodityClassification>
-        <cbc:ItemClassificationCode listID="CLASS">022</cbc:ItemClassificationCode>
-      </cac:CommodityClassification>
       <cbc:Description>Laptop Peripherals</cbc:Description>
       <cac:OriginCountry>
         <cbc:IdentificationCode>MYS</cbc:IdentificationCode>
       </cac:OriginCountry>
+      <cac:CommodityClassification>
+        <cbc:ItemClassificationCode listID="CLASS">022</cbc:ItemClassificationCode>
+      </cac:CommodityClassification>
     </cac:Item>
     <cac:Price>
       <cbc:PriceAmount currencyID="MYR">50</cbc:PriceAmount>
@@ -174,13 +236,13 @@
       </cac:TaxSubtotal>
     </cac:TaxTotal>
     <cac:Item>
-      <cac:CommodityClassification>
-        <cbc:ItemClassificationCode listID="CLASS">022</cbc:ItemClassificationCode>
-      </cac:CommodityClassification>
       <cbc:Description>Computer Monitor</cbc:Description>
       <cac:OriginCountry>
         <cbc:IdentificationCode>MYS</cbc:IdentificationCode>
       </cac:OriginCountry>
+      <cac:CommodityClassification>
+        <cbc:ItemClassificationCode listID="CLASS">022</cbc:ItemClassificationCode>
+      </cac:CommodityClassification>
     </cac:Item>
     <cac:Price>
       <cbc:PriceAmount currencyID="MYR">200</cbc:PriceAmount>
@@ -189,66 +251,4 @@
       <cbc:Amount currencyID="MYR">200</cbc:Amount>
     </cac:ItemPriceExtension>
   </cac:InvoiceLine>
-  <UBLExtensions>
-    <UBLExtension>
-      <ExtensionURI>urn:oasis:names:specification:ubl:dsig:enveloped:xades</ExtensionURI>
-      <ExtensionContent>
-        <UBLDocumentSignatures>
-          <SignatureInformation>
-            <cbc:ID>urn:oasis:names:specification:ubl:signature:1</cbc:ID>
-            <ReferencedSignatureID>urn:oasis:names:specification:ubl:signature:Invoice</ReferencedSignatureID>
-            <ds:Signature Id="signature">
-              <ds:Object>
-                <ds:QualifyingProperties Target="signature">
-                  <ds:SignedProperties Id="id-xades-signed-props">
-                    <ds:SignedSignatureProperties>
-                      <ds:SigningTime>2025-04-15T02:01:36Z</ds:SigningTime>
-                      <ds:SigningCertificate>
-                        <ds:Cert>
-                          <ds:CertDigest>
-                            <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
-                            <ds:DigestValue>+kdLjFra9qRhG35bEKff9ZPjj6Bq6W6/j0NS0st/ves=</ds:DigestValue>
-                          </ds:CertDigest>
-                          <ds:IssuerSerial>
-                            <ds:X509IssuerName>C=MY, O=Raffcomm Technologies Sdn Bhd, OU=1000449-W, CN=CypherSign Pro Max</ds:X509IssuerName>
-                            <ds:X509SerialNumber>1308502606566147853</ds:X509SerialNumber>
-                          </ds:IssuerSerial>
-                        </ds:Cert>
-                      </ds:SigningCertificate>
-                    </ds:SignedSignatureProperties>
-                  </ds:SignedProperties>
-                </ds:QualifyingProperties>
-              </ds:Object>
-              <ds:KeyInfo>
-                <ds:X509Data>
-                  <ds:X509Certificate>MIIFJzCCBA+gAwIBAgIIEii8MBwMRw0wDQYJKoZIhvcNAQELBQAwZjEbMBkGA1UEAwwSQ3lwaGVyU2lnbiBQcm8gTWF4MRIwEAYDVQQLDAkxMDAwNDQ5LVcxJjAkBgNVBAoMHVJhZmZjb21tIFRlY2hub2xvZ2llcyBTZG4gQmhkMQswCQYDVQQGEwJNWTAeFw0yNDA2MjEwMTExNTBaFw0yNTA2MjEwMTExNTBaMIGbMSQwIgYJKoZIhvcNAQkBFhV0ZXN0LmNlcnRAcmFmZmNvbW0ubXkxDjAMBgNVBAMMBUR1bW15MRIwEAYDVQQFEwlEMTIzNDU2NzgxGzAZBgNVBAsMElRlc3QgVW5pdCBlSW52b2ljZTEVMBMGA1UEYQwMQzI5NzAyNjM1MDYwMQ4wDAYDVQQKDAVEdW1teTELMAkGA1UEBhMCTVkwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDi+PCSf8b/CNXyPrwrOsSRv9RlZnD3IR+k+5BbwYW6kKDa9ES5AHwSWibluBEZCT2BvcMjodnZUHDCPl1jUzS8TJ65YIBYe3p9nuQiE6v3mtwj53KcUEawDa6d2emTftenoRgIN6sx935elnI3+nHDTBDuHgaG6m7H118LlfEpU39I8aTv5AZotSezfmHfD5Vmysm8bkvLV0ibm4KQfj4aRqoTfiakQpFwamMJ+SSKUwzrYghF0OHUIuu0kNr21GMN7Q3wWZjPQRF484xeUhFaL+CsjeeIFzxEjvDs/kSNfUaQZPwAfyuG70adzMTul7gGo1Bzz4uJWz5znfomk2ZbAgMBAAGjggGhMIIBnTAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFGtOaNbCTehELL1jFh4g6YilI5ueMFYGCCsGAQUFBwEBBEowSDBGBggrBgEFBQcwAYY6aHR0cDovL29jc3AuY3lwaGVyc2lnbi5teTo4MDgwL2VqYmNhL3B1YmxpY3dlYi9zdGF0dXMvb2NzcDCBhAYDVR0gBH0wezA7BgUrBgEEATAyMDAGCCsGAQUFBwICMCQeIgAxAC4AMwAuADYALgAxAC4ANAAuADEALgA1ADEAMgAxADUwPAYIKwYBBQUHAgEwMDAuBggrBgEFBQcCARYiaHR0cHM6Ly93d3cucmFmZnRlY2gubXkvcmVwb3NpdG9yeTAfBgNVHSUEGDAWBggrBgEFBQcDBAYKKwYBBAGCNwoDDDA9BgNVHR8ENjA0MDKgMKAuhixodHRwczovL3d3dy5yYWZmdGVjaC5teS9jcmwvQ3lwaGVyU2lnblByb01heDAdBgNVHQ4EFgQULWvOw9mY47L3XKdMqla4XfzWQ2swDgYDVR0PAQH/BAQDAgTQMA0GCSqGSIb3DQEBCwUAA4IBAQCsf4enIwiYRm4DjmKBRic2uHkGCeMqQ4I/Q4J+vOkeH3qUFBhz/sfpNdFaLBAA8rukRi0y0kp4oHIEg4Rj9yjjVv1LTOCbZkzx5kmif9yhP2nzJig9A7WfDfh+QhMf0HBcby/WIJ7bedvIToLwrsyzhLFZryM4x4KGsS0HxiTA+2uSIhhbi+0Ol9PnuvLit08oD2hCD9UqB1t94KkbQafAlaIHsmoZTFiJP9iB7EWpLZyDEGEyMllh6rEBMPwU4j8wd08JLN46O29KLJMCmsqLNMoh412Ay/rLK7Y6mhgYse6zZmcrovZbYhHicQxwsbM3jHAtYzh9v/8oOgVTC6bR</ds:X509Certificate>
-                  <ds:X509SubjectName>C=MY, O=Raffcomm Technologies Sdn Bhd, OU=1000449-W, CN=CypherSign Pro Max</ds:X509SubjectName>
-                  <ds:X509IssuerSerial>
-                    <ds:X509IssuerName>C=MY, O=Raffcomm Technologies Sdn Bhd, OU=1000449-W, CN=CypherSign Pro Max</ds:X509IssuerName>
-                    <ds:X509SerialNumber>1308502606566147853</ds:X509SerialNumber>
-                  </ds:X509IssuerSerial>
-                </ds:X509Data>
-              </ds:KeyInfo>
-              <ds:SignatureValue>w5LWz+bY+B2tghxgCjAJ4cZ4daIskkk3RfY9a9nMMD8ryZo6StL4VxFJq1Xh8zrYAjWWRw7DvcUP5prEQEQWpA3ocdI74pHr39T+b20u2iy70mtkZpz6NTtYF7ZL9Hls8MtK/fKDy/JJb4S7IxF0c7y8IQ258vUCARriUaHvhB3zoL2lKi7dH4EwTfDz1bQd5cKVM7CxD/0k3vB37prhW0YGtarhErqRXeqgWPvWvgkksO73MjMNmwJJymfWaYp42LiPelBB2deB1NNEeIV8qOYG6O9dnwTGB6gE5MzaYYwk2Vrw7/9vARnTrhL5qe3VaCkYAJvzxCTWm9P73SKODg==</ds:SignatureValue>
-              <ds:SignedInfo>
-                <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
-                <ds:Reference Type="http://uri.etsi.org/01903/v1.3.2#SignedProperties" URI="#id-xades-signed-props">
-                  <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
-                  <ds:DigestValue>YtnXjwGD9a3izt01otM5PrZWSqCkALYkRogvArtxK9Q=</ds:DigestValue>
-                </ds:Reference>
-                <ds:Reference Type="" URI="">
-                  <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
-                  <ds:DigestValue>3+0mMUPmCNfK/yILqruu9vXKnHsj50Q9knpXrBXzfV0=</ds:DigestValue>
-                </ds:Reference>
-              </ds:SignedInfo>
-            </ds:Signature>
-          </SignatureInformation>
-        </UBLDocumentSignatures>
-      </ExtensionContent>
-    </UBLExtension>
-  </UBLExtensions>
-  <cac:Signature>
-    <cbc:ID>urn:oasis:names:specification:ubl:signature:Invoice</cbc:ID>
-    <ds:SignatureMethod>urn:oasis:names:specification:ubl:dsig:enveloped:xades</ds:SignatureMethod>
-  </cac:Signature>
 </Invoice>

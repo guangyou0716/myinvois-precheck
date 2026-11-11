@@ -19,7 +19,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "check": "npm run lint && npm run typecheck && npm test",
-    "fetch-codes": "node scripts/fetch-codes.mjs"
+    "fetch-codes": "node scripts/fetch-codes.mjs",
+    "gen-ubl-order": "node scripts/gen-ubl-order.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9",
